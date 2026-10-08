@@ -407,7 +407,7 @@ function newEntry(){
   renderSheet();
 }
 function closeSheet(){
-  flush();camClose(true);
+  autoCreate();flush();camClose(true);
   S.cur=null;S.draft=null;S.photos=[];S.lb=null;S.unlocked=null;S.snap=null;S.cdraft=null;
   $('#sheet').hidden=true;$('#lightbox').hidden=true;document.documentElement.style.overflow='';renderMain();
 }
@@ -417,16 +417,48 @@ function createDossier(){
   if(!pl){toast('Saisir la plaque d’immatriculation');return}
   if(!d.recep){toast('Indiquer qui réceptionne le véhicule');return}
   if(!d.type){toast('Choisir la nature de l’intervention');return}
+  startDossier(d);
+  S.tab='photos';renderSheet();
+}
+/* Crée le dossier « Entrée en cours » : tout ce qui est saisi ensuite s'enregistre tout seul. */
+function startDossier(d){
+  var pl=normPlate(d.plaque);
   var day=new Date().toLocaleDateString('sv-SE').replace(/-/g,'');
   var id=day+'-'+pl,n=1;
   while(V(id)){n++;id=day+'-'+pl+'-'+n}
-  var rec=Object.assign({},d,{plaque:d.plaque.toUpperCase(),statut:'brouillon',createdAt:Date.now(),pe:0,hist:[{ts:Date.now(),by:d.recep,a:'Dossier créé'}]});
+  var rec=Object.assign({},d,{id:id,plaque:d.plaque.toUpperCase(),statut:'brouillon',createdAt:Date.now(),pe:0,hist:[{ts:Date.now(),by:d.recep,a:'Dossier créé'}]});
   try{localStorage.setItem('rv-recep',d.recep)}catch(e){}
+  S.list.push(rec);S.cur=id;S.draft=null;S.photos=S.pm[id]=[];
   setSave('saving');
-  api.write('vehicules/'+id,rec).then(function(){
-    rec.id=id;if(!V(id))S.list.push(rec);
-    S.cur=id;S.draft=null;S.tab='photos';S.photos=S.pm[id]=[];renderSheet();setSave('ok');
-  },function(e){toast('Création impossible : '+(e&&e.message||'erreur'))});
+  queues[id]=api.write('vehicules/'+id,snapOf(rec)).then(function(){setSave('ok')},function(e){setSave('err',e);toast('Création impossible : '+(e&&e.message||'erreur'))});
+  return id;
+}
+/* Enregistre le brouillon dès que la plaque et le réceptionnaire sont connus, sans toucher à l'écran. */
+function autoCreate(){
+  var d=S.draft;if(!d||S.cur||!normPlate(d.plaque)||!d.recep)return;
+  startDossier(d);
+  if(!$('#sheet').hidden)refreshChrome();
+}
+
+/* ---------- verrouillage de l'entrée ---------- */
+var SIGLAB={sigRecep:'du réceptionnaire',sigClient:'du client'};
+function validateEntry(){
+  var v3=VV();if(!v3||v3.statut!=='brouillon')return;
+  S.unlocked=null;S.snap=null;
+  save({statut:'atelier',entreeAt:Date.now(),hist:hist(v3,'Entrée validée : le dossier est verrouillé')}).then(function(){toast('Entrée validée, dossier en atelier');return makePdf('entree',true)});
+  renderSheet();
+}
+/* f = signature qui vient d'être posée : si le verrouillage est refusé, elle est retirée. */
+function lockConfirm(f){
+  var undo=f?'<p class="hint"><b>Si vous annulez, la signature '+esc(SIGLAB[f]||'')+' que vous venez de poser sera retirée</b> et devra être refaite avant de pouvoir verrouiller.</p>':'';
+  modalShow('<h2>Verrouiller la fiche ?</h2>'+
+    '<p>Les informations, les photos, le contrôle et les signatures sont complets. En validant, l’entrée est <b>verrouillée</b> : toute correction demandera le code PIN propriétaire et sera inscrite dans l’historique. Le PDF d’entrée est ensuite créé.</p>'+undo+
+    '<div class="mrow2"><button class="btn" data-act="lockcancel"'+(f?' data-f="'+esc(f)+'"':'')+'>'+(f?'Annuler et retirer la signature':'Annuler')+'</button><button class="btn pri" data-act="lockok">Verrouiller la fiche</button></div>');
+}
+function undoSig(f){
+  var v=VV();if(!v||!v[f])return;
+  var o={};o[f]=null;o.hist=hist(v,'Signature '+(SIGLAB[f]||'')+' retirée : verrouillage de la fiche non confirmé');
+  save(o);renderSheet(true);toast('Signature retirée');
 }
 
 /* ---------- photos ---------- */
@@ -920,13 +952,14 @@ function act(a,b){
   if(a==='open'){openDossier(d.id);return}
   if(a==='close'){closeSheet();return}
   if(a==='tab'){flush();S.tab=d.v;renderSheet();return}
-  if(a==='type'){var v=VV();v.type=d.v;if(S.cur)save({type:d.v});renderSheet(true);return}
+  if(a==='type'){var v=VV();v.type=d.v;if(S.cur)save({type:d.v});else autoCreate();renderSheet(true);return}
   if(a==='create'){createDossier();return}
   if(a==='tampon'){var vt=VV();vt.dateLimite=TAMPON;if(S.cur)save({dateLimite:TAMPON});renderSheet(true);toast('Voiture tampon : 01/01/2100');return}
   if(a==='status'){var v2=VV();save({statut:d.v,hist:hist(v2,'Statut : '+(COLS.filter(function(c){return c[0]===d.v})[0]||[0,d.v])[1])});renderSheet(true);return}
   if(a==='validate'){var v3=VV();if(!readiness(v3).every(function(x){return x.ok})){toast('Il reste des points à compléter');return}
-    S.unlocked=null;S.snap=null;
-    save({statut:'atelier',entreeAt:Date.now(),hist:hist(v3,'Entrée validée : le dossier est verrouillé')}).then(function(){toast('Entrée validée, dossier en atelier');return makePdf('entree',true)});renderSheet();return}
+    lockConfirm(null);return}
+  if(a==='lockok'){modalHide();validateEntry();return}
+  if(a==='lockcancel'){modalHide();if(d.f)undoSig(d.f);return}
   if(a==='next'){startQueue(d.phase,null);return}
   if(a==='shoot'){startQueue(d.phase,d.slot);return}
   if(a==='retake'){$('#lightbox').hidden=true;S.lb=null;startQueue(d.phase,d.slot);return}
@@ -944,7 +977,8 @@ function act(a,b){
   if(a==='resig'){var o={};o[d.f]=null;save(o);renderSheet(true);return}
   if(a==='savesig'){var cv2=$('canvas.pad[data-pad="'+d.f+'"]');if(!cv2||!cv2.dataset.dirty){toast('Signer d’abord dans le cadre');return}
     var nm=($('#sn-'+d.f)||{}).value||'';var img=cv2.toDataURL('image/png');
-    var sg={img:img,nom:nm,ts:Date.now()},o2={};o2[d.f]=sg;save(o2);renderSheet(true);toast('Signature enregistrée');return}
+    var sg={img:img,nom:nm,ts:Date.now()},o2={};o2[d.f]=sg;save(o2);renderSheet(true);toast('Signature enregistrée');
+    var vs=VV();if(S.cur&&vs.statut==='brouillon'&&readiness(vs).every(function(x){return x.ok}))lockConfirm(d.f);return}
   if(a==='validateexit'){var v7=VV();if(!exitReady(v7).every(function(x){return x.ok})){toast('Il reste des points à compléter');return}
     S.unlocked=null;S.snap=null;
     save({statut:'sorti',sortieAt:Date.now(),hist:hist(v7,'Sortie validée : véhicule rendu par '+(v7.remisPar||'—')+', récupéré par '+(v7.remisA||'—'),v7.remisPar||undefined)}).then(function(){toast('Sortie validée');return makePdf('full',true)});renderSheet();return}
@@ -976,6 +1010,9 @@ document.addEventListener('click',function(e){
     S.lb=b.dataset.pid||(b.dataset.phase+'_'+b.dataset.slot);updateLightbox();return}
   act(b.dataset.act,b);
 });
+/* Brouillon : créé dès qu'on quitte un champ, ou quand l'app passe en arrière-plan. */
+document.addEventListener('change',function(e){if(S.draft&&e.target&&e.target.dataset&&e.target.dataset.f)autoCreate()});
+document.addEventListener('visibilitychange',function(){if(document.hidden){autoCreate();flush()}});
 document.addEventListener('input',function(e){
   var t=e.target;
   if(t.id==='q'){S.q=t.value;renderMain();return}
