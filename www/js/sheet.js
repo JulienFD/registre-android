@@ -1,6 +1,6 @@
 import { tabCompl } from './compl.js';
-import { CAM, CHECK, COLS, DMG, PANELS, SLOTS, SORTIE_REQ, TYPES, VIEWS } from './constants.js';
-import { $, S, V, VV, esc, fmtD, fmtDT, isLocked, limTxt, missingForEntry, plateHtml, srcOf, todayISO } from './core.js';
+import { CAM, PLAQUE, CHECK, COLS, DMG, PANELS, SLOTS, SORTIE_REQ, TYPES, VIEWS } from './constants.js';
+import { $, S, V, VV, esc, fmtD, fmtDT, isLocked, limTxt, entryErrors, plateHtml, plateKindOf, RULES, srcOf, todayISO } from './core.js';
 import { entrySet, exitSet } from './photos.js';
 
 function lockWrap(html, area) { return '<fieldset class="lockfs"' + (isLocked(VV(), area) ? ' disabled' : '') + '>' + html + '</fieldset>' }
@@ -18,7 +18,7 @@ export function readiness(v) {
   var es = entrySet(), np = SLOTS.filter(function (s) { return es[s.k] }).length;
   var nc = CHECK.filter(function (c) { return v.chk && v.chk[c.k] && v.chk[c.k].s }).length;
   return [
-    { t: 'Informations', ok: !missingForEntry(v).length, tab: 'infos' },
+    { t: 'Informations', ok: !entryErrors(v).length, tab: 'infos' },
     { t: 'Photos ' + np + '/' + SLOTS.length, ok: np === SLOTS.length, tab: 'photos' },
     { t: 'Contrôle ' + nc + '/' + CHECK.length, ok: nc === CHECK.length, tab: 'dom' },
     { t: 'Signatures', ok: !!v.sigRecep && (!!v.sigClient || !!v.clientAbsent), tab: 'sign' }
@@ -26,18 +26,18 @@ export function readiness(v) {
 }
 function isInvalid(f) { return S.invalid.indexOf(f) > -1 }
 function fld(f, label, o) {
-  o = o || {}; var v = VV() || {}; var inv = isInvalid(f);
-  return '<label class="fld' + (inv ? ' invalid' : '') + '"><span>' + label + (o.req ? ' <em>*</em>' : '') + '</span><input id="f-' + f + '" data-f="' + f + '"' + (inv ? ' aria-invalid="true"' : '') + ' type="' + (o.type || 'text') + '" value="' + esc(v[f] == null ? '' : v[f]) + '" placeholder="' + esc(o.ph || '') + '"' + (o.list ? ' list="' + o.list + '"' : '') + (o.min ? ' min="' + o.min + '"' : '') + (o.type === 'number' ? ' inputmode="numeric"' : '') + ' autocomplete="off"></label>'
+  o = o || {}; var v = VV() || {}; var inv = isInvalid(f), r = RULES[f] || {}, max = o.max || r.max;
+  return '<label class="fld' + (inv ? ' invalid' : '') + '"' + (inv ? ' data-err="' + (v[f] ? 'Format incorrect' : 'Champ obligatoire') + '"' : '') + '><span>' + label + (o.req ? ' <em>*</em>' : '') + '</span><input id="f-' + f + '" data-f="' + f + '"' + (inv ? ' aria-invalid="true"' : '') + ' type="' + (r.digits ? 'text' : o.type || 'text') + '" value="' + esc(v[f] == null ? '' : v[f]) + '" placeholder="' + esc(o.ph || '') + '"' + (o.list ? ' list="' + o.list + '"' : '') + (o.min ? ' min="' + o.min + '"' : '') + (o.type === 'date' ? ' max="2100-12-31"' : '') + (max ? ' maxlength="' + max + '"' : '') + (r.digits ? ' inputmode="numeric"' : o.type === 'tel' ? ' inputmode="tel"' : '') + (f === 'plaque' ? ' autocapitalize="characters" spellcheck="false"' : '') + ' autocomplete="off"></label>'
 }
 function area(f, label, o) {
-  o = o || {}; var v = VV() || {}; var inv = isInvalid(f);
-  return '<label class="fld' + (inv ? ' invalid' : '') + '"><span>' + label + (o.req ? ' <em>*</em>' : '') + '</span><textarea id="f-' + f + '" data-f="' + f + '"' + (inv ? ' aria-invalid="true"' : '') + ' rows="' + (o.rows || 4) + '" placeholder="' + esc(o.ph || '') + '">' + esc(v[f] || '') + '</textarea></label>'
+  o = o || {}; var v = VV() || {}; var inv = isInvalid(f), r = RULES[f] || {};
+  return '<label class="fld' + (inv ? ' invalid' : '') + '"' + (inv ? ' data-err="Champ obligatoire"' : '') + '><span>' + label + (o.req ? ' <em>*</em>' : '') + '</span><textarea id="f-' + f + '" data-f="' + f + '"' + (inv ? ' aria-invalid="true"' : '') + (r.max ? ' maxlength="' + r.max + '"' : '') + ' rows="' + (o.rows || 4) + '" placeholder="' + esc(o.ph || '') + '">' + esc(v[f] || '') + '</textarea></label>'
 }
 
 function tabInfos0(v) {
   var fuel = ['', 'Réserve', '1/4', '1/2', '3/4', 'Plein'];
   return '<div class="sec"><h3>Véhicule</h3><div class="grid2">' +
-    fld('plaque', 'Plaque d’immatriculation', { req: 1, ph: 'Ex. AB-123-CD' }) + fld('marque', 'Marque', { ph: 'Ex. Porsche' }) + fld('modele', 'Modèle', { ph: 'Ex. 911 Carrera' }) + fld('couleur', 'Couleur', { ph: 'Ex. Gris' }) +
+    fld('plaque', 'Plaque d’immatriculation', { req: 1, ph: PLAQUE[plateKindOf(v)].ph, max: PLAQUE[plateKindOf(v)].max }) + '<label class="fld"><span>Type de plaque</span><select id="f-plaqueType" data-f="plaqueType"><option value="fr"' + (plateKindOf(v) === 'fr' ? ' selected' : '') + '>Française (AB-123-CD)</option><option value="etr"' + (plateKindOf(v) === 'etr' ? ' selected' : '') + '>Étrangère ou autre</option></select></label>' + fld('marque', 'Marque', { ph: 'Ex. Porsche' }) + fld('modele', 'Modèle', { ph: 'Ex. 911 Carrera' }) + fld('couleur', 'Couleur', { ph: 'Ex. Gris' }) +
     fld('km', 'Kilométrage', { type: 'number', ph: 'Ex. 45200' }) +
     '<label class="fld"><span>Niveau de carburant</span><select id="f-fuel" data-f="fuel">' + fuel.map(function (o) { return '<option value="' + esc(o) + '"' + ((v.fuel || '') === o ? ' selected' : '') + '>' + (o || 'Non relevé') + '</option>' }).join('') + '</select></label>' +
     fld('cles', 'Clés remises (nombre)', { type: 'number', ph: 'Ex. 2' }) + '</div>' +
@@ -80,7 +80,7 @@ function photoGrid(phase) {
     '<div class="seg"><button class="btn pri shoot" data-act="next" data-phase="' + phase + '">' + CAM + (next ? 'Photo suivante : ' + esc(SLOTS.filter(function (s) { return s.k === next })[0].l) : 'Toutes les vues sont prises') + '</button>' +
     '<span class="sv" style="align-self:center">' + done + ' sur ' + SLOTS.length + (phase === 'sortie' ? ' · ' + SORTIE_REQ + ' minimum pour valider la sortie' : '') + '</span></div>' + tiles +
     '<div class="sec" style="background:var(--bg)"><h3>Photos de détail</h3><p class="hint">Rayure, impact, numéro de série, tout ce qui mérite un gros plan. On peut en ajouter à tout moment.</p>' +
-    '<div class="seg"><label class="fld" style="flex:1;min-width:200px"><span>Légende</span><input id="xl-' + phase + '" type="text" placeholder="Ex. impact porte arrière gauche" autocomplete="off"></label>' +
+    '<div class="seg"><label class="fld" style="flex:1;min-width:200px"><span>Légende</span><input id="xl-' + phase + '" type="text" maxlength="60" placeholder="Ex. impact porte arrière gauche" autocomplete="off"></label>' +
     '<button class="btn" style="align-self:flex-end" data-act="extra" data-phase="' + phase + '">' + CAM + 'Prendre</button>' +
     '<button class="btn" style="align-self:flex-end" data-act="extragal" data-phase="' + phase + '">Importer</button></div>' + extraTiles(extras, phase) + '</div>';
 }
@@ -105,13 +105,13 @@ function tabDom0(v) {
   var rows = marks.map(function (m, i) {
     return '<div class="mrow"><span class="mnum" style="background:' + (DMG.filter(function (d) { return d[0] === m.t })[0] || DMG[5])[2] + '">' + (i + 1) + '</span>' +
       '<select class="mt" data-mk="' + i + '" data-mf="t" aria-label="Type de défaut" style="min-height:44px;border-radius:6px;border:1.5px solid var(--line);background:var(--bg);padding:0 8px">' + DMG.map(function (d) { return '<option value="' + d[0] + '"' + (m.t === d[0] ? ' selected' : '') + '>' + d[1] + '</option>' }).join('') + '</select>' +
-      '<input type="text" data-mk="' + i + '" data-mf="n" value="' + esc(m.n || '') + '" placeholder="Précision (taille, position)" aria-label="Précision du défaut ' + (i + 1) + '">' +
+      '<input type="text" data-mk="' + i + '" data-mf="n" maxlength="80" value="' + esc(m.n || '') + '" placeholder="Précision (taille, position)" aria-label="Précision du défaut ' + (i + 1) + '">' +
       '<button class="btn sm bad" data-act="delmk" data-i="' + i + '" aria-label="Supprimer le défaut ' + (i + 1) + '">Supprimer</button></div>'
   }).join('');
   var ch = CHECK.map(function (c) {
     var s = (v.chk && v.chk[c.k]) || {};
     return '<div class="crow"><span>' + esc(c.l) + '</span><div class="sgm">' + [['ras', 'RAS'], ['def', 'Défaut'], ['na', 'N/A']].map(function (o) { return '<button class="' + o[0] + '" aria-pressed="' + (s.s === o[0]) + '" data-act="chk" data-k="' + c.k + '" data-s="' + o[0] + '">' + o[1] + '</button>' }).join('') + '</div>' +
-      (s.s === 'def' ? '<div class="nt"><input type="text" data-ck="' + c.k + '" value="' + esc(s.n || '') + '" placeholder="Décrire le défaut constaté" aria-label="Défaut : ' + esc(c.l) + '"></div>' : '') + '</div>'
+      (s.s === 'def' ? '<div class="nt"><input type="text" data-ck="' + c.k + '" maxlength="200" value="' + esc(s.n || '') + '" placeholder="Décrire le défaut constaté" aria-label="Défaut : ' + esc(c.l) + '"></div>' : '') + '</div>'
   }).join('');
   return '<div class="sec"><h3>Schéma des dommages</h3><p class="hint">Choisir le type de défaut, puis toucher le schéma à l’endroit exact.</p>' +
     '<div class="dmg">' + DMG.map(function (d) { return '<button class="btn sm' + (S.dmg === d[0] ? ' on' : '') + '" data-act="dmg" data-v="' + d[0] + '"><span style="width:12px;height:12px;border-radius:50%;background:' + d[2] + ';display:inline-block"></span>' + d[1] + '</button>' }).join('') + '</div>' +
@@ -128,7 +128,7 @@ function mesBody() {
     (pdfs.length ? '<div class="stack">' + pdfs.map(function (p) { return '<div class="arow"><span class="grow"><b>' + esc(p.label) + '</b><br><span class="sv">Ajouté le ' + esc(fmtDT(p.ts)) + (p.by ? ' par ' + esc(p.by) : '') + '</span></span><button class="btn sm" data-act="openpdf" data-pid="' + esc(p.id) + '">Ouvrir</button><button class="btn sm bad" data-act="delphoto" data-pid="' + esc(p.id) + '">Retirer</button></div>' }).join('') + '</div>' : '<p class="sv">Aucun PDF ajouté pour l’instant.</p>') +
     '<div class="seg"><button class="btn pri" data-act="addpdf">Ajouter le PDF du NexDiag</button></div>' +
     '<h3 style="font-size:18px">Photos de mesure</h3>' +
-    '<div class="seg"><label class="fld" style="flex:1;min-width:200px"><span>Légende</span><input id="xl-mesures" type="text" placeholder="Ex. capot, zone repeinte" autocomplete="off"></label>' +
+    '<div class="seg"><label class="fld" style="flex:1;min-width:200px"><span>Légende</span><input id="xl-mesures" type="text" maxlength="60" placeholder="Ex. capot, zone repeinte" autocomplete="off"></label>' +
     '<button class="btn" style="align-self:flex-end" data-act="extra" data-phase="mesures">' + CAM + 'Prendre</button>' +
     '<button class="btn" style="align-self:flex-end" data-act="extragal" data-phase="mesures">Importer</button></div>' +
     (ph.length ? '<div class="tiles">' + ph.map(function (p) { return '<button class="tile has" data-act="view" data-phase="mesures" data-pid="' + esc(p.id) + '"><img class="ph" loading="lazy" alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><span class="lb">' + esc(p.label || 'Mesure') + '</span></button>' }).join('') + '</div>' : '');
@@ -137,14 +137,14 @@ function tabMes(v) {
   var mes = v.mes || {};
   return '<div class="sec"><h3>Analyse NexDiag</h3><div id="pg-mes" class="stack">' + mesBody() + '</div></div>' +
     '<div class="sec"><h3>Épaisseurs relevées à la main</h3><p class="hint">Facultatif, en microns. Utile quand le PDF de l’appareil n’est pas disponible.</p><div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
-    PANELS.map(function (p) { return '<label class="fld"><span>' + p[1] + '</span><input type="number" inputmode="numeric" data-mesk="' + p[0] + '" value="' + esc(mes[p[0]] == null ? '' : mes[p[0]]) + '" placeholder="µm"></label>' }).join('') + '</div></div>' +
+    PANELS.map(function (p) { return '<label class="fld"><span>' + p[1] + '</span><input type="text" inputmode="numeric" maxlength="4" data-mesk="' + p[0] + '" value="' + esc(mes[p[0]] == null ? '' : mes[p[0]]) + '" placeholder="µm"></label>' }).join('') + '</div></div>' +
     '<div class="sec"><h3>Notes d’analyse</h3>' + area('mesNotes', 'Remarques (zones repeintes, valeurs suspectes, conseils au client)', { rows: 4 }) + '</div>';
 }
 function sigBlock(field, title, defName) {
   var v = VV(), s = v[field];
   return '<div class="sec"><h3>' + title + '</h3>' +
     (s ? '<div class="sigimg"><img alt="Signature" src="' + esc(s.img) + '"></div><div class="sv">Signé par ' + esc(s.nom || '—') + ' le ' + esc(fmtDT(s.ts)) + '</div><div><button class="btn sm" data-act="resig" data-f="' + field + '">Refaire la signature</button></div>' :
-      '<label class="fld"><span>Nom du signataire</span><input type="text" id="sn-' + field + '" value="' + esc(defName || '') + '" autocomplete="off"></label>' +
+      '<label class="fld"><span>Nom du signataire</span><input type="text" id="sn-' + field + '" maxlength="60" value="' + esc(defName || '') + '" autocomplete="off"></label>' +
       '<canvas class="pad" width="600" height="200" data-pad="' + field + '" aria-label="Zone de signature"></canvas>' +
       '<div class="seg"><button class="btn" data-act="clearpad" data-f="' + field + '">Effacer</button><button class="btn pri" data-act="savesig" data-f="' + field + '">Enregistrer la signature</button></div>') + '</div>';
 }

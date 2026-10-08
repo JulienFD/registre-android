@@ -21,7 +21,7 @@
 .fld ::placeholder{color:var(--ink2);opacity:.6;font-style:italic}
 .fld textarea{resize:vertical;min-height:110px}
 .fld.invalid>span{color:var(--bad)}
-.fld.invalid::after{content:'Champ obligatoire';color:var(--bad);font-size:13px;font-weight:600}
+.fld.invalid::after{content:attr(data-err);color:var(--bad);font-size:13px;font-weight:600}
 .fld.invalid input,.fld.invalid select,.fld.invalid textarea{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
 .types.invalid{outline:2px solid var(--bad);outline-offset:4px;border-radius:6px}
 .types{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}

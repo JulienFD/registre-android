@@ -16,6 +16,13 @@ export var limite = U.limite;
 export var TAMPON = U.TAMPON;
 export var missingForCreate = U.missingForCreate;
 export var missingForEntry = U.missingForEntry;
+export var entryErrors = U.entryErrors;
+export var RULES = U.RULES;
+export var formatPlate = U.formatPlate;
+export var plateValid = U.plateValid;
+export var sanitize = U.sanitize;
+export function plateKindOf(v) { return v.plaqueType || U.plateKind(v.plaque) }
+export function cleanField(v, f, val) { return f === 'plaque' ? U.formatPlate(val, plateKindOf(v)) : U.RULES[f] ? U.sanitize(val, U.RULES[f]) : val }
 export var sortieDefaut = U.sortieDefaut;
 export function V(id) { for (var i = 0; i < S.list.length; i++)if (S.list[i].id === id) return S.list[i]; return null }
 export function VV() { return S.cur ? V(S.cur) : S.draft }

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { TAMPON, normPlate, fmtPlate, daysTo, due, limite, missingForCreate, missingForEntry, sortieDefaut } = require('../www/utils.js');
+const { TAMPON, normPlate, fmtPlate, daysTo, due, limite, missingForCreate, missingForEntry, sortieDefaut, formatPlate, plateValid, plateKind, sanitize, RULES, invalidForEntry, entryErrors } = require('../www/utils.js');
 
 const NOW = new Date('2026-10-08T15:30:00');
 
@@ -70,4 +70,82 @@ test('sortieDefaut ignore la voiture tampon, une date passée ou une limite vide
   assert.equal(sortieDefaut({ dateLimite: TAMPON }, '2026-10-08'), null);
   assert.equal(sortieDefaut({ dateLimite: '2026-10-01' }, '2026-10-08'), null);
   assert.equal(sortieDefaut({}, '2026-10-08'), null);
+});
+
+test('formatPlate française : tirets après 2 lettres et 3 chiffres, caractères hors format refusés', () => {
+  assert.equal(formatPlate('ab', 'fr'), 'AB');
+  assert.equal(formatPlate('abc', 'fr'), 'AB');
+  assert.equal(formatPlate('ab1', 'fr'), 'AB-1');
+  assert.equal(formatPlate('ab123', 'fr'), 'AB-123');
+  assert.equal(formatPlate('ab123c', 'fr'), 'AB-123-C');
+  assert.equal(formatPlate('ab123cd', 'fr'), 'AB-123-CD');
+  assert.equal(formatPlate('ab123cdxyz9', 'fr'), 'AB-123-CD');
+  assert.equal(formatPlate('A1B2', 'fr'), 'AB-2');
+  assert.equal(formatPlate('<b>12', 'fr'), 'B');
+});
+
+test('formatPlate française : les lettres I, O et U n\'existent pas en SIV', () => {
+  assert.equal(formatPlate('io', 'fr'), '');
+  assert.equal(formatPlate('ab123ou', 'fr'), 'AB-123');
+});
+
+test('formatPlate étrangère : majuscules, lettres, chiffres, espace et tiret, 12 caractères', () => {
+  assert.equal(formatPlate('b-ab 1234', 'etr'), 'B-AB 1234');
+  assert.equal(formatPlate('<script>', 'etr'), 'SCRIPT');
+  assert.equal(formatPlate('  --ab  --12', 'etr'), 'AB 12');
+  assert.equal(formatPlate('abcdefghijklmnop', 'etr'), 'ABCDEFGHIJKL');
+  assert.equal(formatPlate('ñ12 äb', 'etr'), 'Ñ12 ÄB');
+});
+
+test('plateValid exige une plaque SIV complète pour la française', () => {
+  assert.equal(plateValid('AB-123-CD', 'fr'), true);
+  assert.equal(plateValid('AB-123-C', 'fr'), false);
+  assert.equal(plateValid('', 'fr'), false);
+  assert.equal(plateValid('1234 XY 78', 'fr'), false);
+});
+
+test('plateValid accepte toute plaque étrangère d\'au moins 2 caractères', () => {
+  assert.equal(plateValid('B-AB 1234', 'etr'), true);
+  assert.equal(plateValid('A', 'etr'), false);
+  assert.equal(plateValid(' - ', 'etr'), false);
+});
+
+test('plateKind déduit le type des anciens dossiers sans type enregistré', () => {
+  assert.equal(plateKind('AB-123-CD'), 'fr');
+  assert.equal(plateKind('1234 XY 78'), 'etr');
+  assert.equal(plateKind(''), 'fr');
+});
+
+test('sanitize ne garde que des chiffres, borne la longueur et retire les caractères de contrôle', () => {
+  assert.equal(sanitize('12a3.4e5', { digits: true, max: 4 }), '1234');
+  assert.equal(sanitize('  Dupont\u0000\u0007', { max: 30 }), 'Dupont');
+  assert.equal(sanitize('x'.repeat(50), { max: 30 }).length, 30);
+  assert.equal(sanitize(null, { max: 5 }), '');
+});
+
+test('sanitize garde les retours à la ligne des zones de texte', () => {
+  assert.equal(sanitize('a\nb', { max: 10 }), 'a\nb');
+});
+
+test('RULES borne les champs numériques, le téléphone et l\'e-mail', () => {
+  assert.equal(sanitize('45 200 km', RULES.km), '45200');
+  assert.equal(sanitize('123', RULES.cles), '12');
+  assert.equal(sanitize('06 12-34.56 78abc', RULES.clientTel), '06 12-34.56 78');
+  assert.equal(sanitize('a b@c.fr', RULES.clientMail), 'ab@c.fr');
+});
+
+test('invalidForEntry signale e-mail, téléphone et dates mal formés mais saisis', () => {
+  assert.deepEqual(invalidForEntry({}), []);
+  assert.deepEqual(invalidForEntry({ clientMail: 'pas-un-mail', clientTel: '12' }), ['clientTel', 'clientMail']);
+  assert.deepEqual(invalidForEntry({ clientMail: 'a@b.fr', clientTel: '06 12 34 56 78' }), []);
+  assert.deepEqual(invalidForEntry({ dateLimite: '2026-02-30', sortiePrevue: '1999-01-01' }), ['dateLimite', 'sortiePrevue']);
+});
+
+test('missingForEntry compte une plaque incomplète comme manquante', () => {
+  assert.deepEqual(missingForEntry({ ...COMPLET, plaque: 'AB-12', plaqueType: 'fr' }), ['plaque']);
+  assert.deepEqual(missingForEntry({ ...COMPLET, plaque: 'B-AB 1234', plaqueType: 'etr' }), []);
+});
+
+test('entryErrors réunit manquants et invalides dans l\'ordre du formulaire', () => {
+  assert.deepEqual(entryErrors({ ...COMPLET, ops: '', clientMail: 'x', plaque: '' }), ['plaque', 'ops', 'clientMail']);
 });

@@ -6,9 +6,9 @@ export function getCd() { return S.cdraft || (S.cdraft = { by: lastWho(), kind: 
 export function tabCompl() {
   var d = getCd(), list = (S.cm[S.cur] || []).slice().sort(function (a, b) { return b.ts - a.ts });
   return '<div class="sec"><h3>Ajouter un complément</h3><p class="hint">Pour tout ce qui est découvert après l’entrée (après le lavage, en cours de travaux) : texte et photos s’ajoutent à la suite, datés et signés. Rien de ce qui a été enregistré avant n’est modifié ni effacé.</p>' +
-    '<div class="grid2"><label class="fld"><span>Qui ajoute <em>*</em></span><input id="cd-by" type="text" list="people" value="' + esc(d.by) + '" autocomplete="off"></label>' +
+    '<div class="grid2"><label class="fld"><span>Qui ajoute <em>*</em></span><input id="cd-by" type="text" list="people" maxlength="40" value="' + esc(d.by) + '" autocomplete="off"></label>' +
     '<label class="fld"><span>Nature</span><select id="cd-kind">' + CK.map(function (c) { return '<option value="' + c[0] + '"' + (d.kind === c[0] ? ' selected' : '') + '>' + c[1] + '</option>' }).join('') + '</select></label></div>' +
-    '<label class="fld"><span>Ce qui est constaté <em>*</em></span><textarea id="cd-text" rows="3" placeholder="Ex. rayure sur l’aile arrière droite visible après lavage">' + esc(d.text) + '</textarea></label>' +
+    '<label class="fld"><span>Ce qui est constaté <em>*</em></span><textarea id="cd-text" rows="3" maxlength="1000" placeholder="Ex. rayure sur l’aile arrière droite visible après lavage">' + esc(d.text) + '</textarea></label>' +
     '<div class="pickrow"><button class="btn" data-act="cdshoot">' + CAM + 'Prendre des photos</button><button class="btn" data-act="cdimport">Importer des images</button></div>' +
     (d.pics.length ? '<div class="tiles">' + d.pics.map(function (p) { return '<div class="tile has"><img class="ph" alt="" src="' + esc(p.url) + '"><span class="lb">' + esc(p.label) + '</span></div>' }).join('') + '</div>' : '') +
     '<div class="seg"><button class="btn pri" data-act="cdsave">Enregistrer le complément</button>' + (d.pics.length ? '<button class="btn" data-act="cdclear">Retirer ces photos</button>' : '') + '</div></div>' +

@@ -1,7 +1,8 @@
 import { act } from './actions.js';
 import { renderMain } from './board.js';
 import { getCd } from './compl.js';
-import { $, S, T, VV, api, flush, fmtDT, fmtPlate, isLocked, pend, save, sortieDefaut, todayISO, toast } from './core.js';
+import { $, S, T, VV, api, flush, fmtDT, cleanField, formatPlate, isLocked, pend, sanitize, save, sortieDefaut, todayISO, toast } from './core.js';
+import { PLAQUE } from './constants.js';
 import { autoCreate } from './dossier.js';
 import { newPin } from './pin.js';
 import { clearInvalid, refreshChrome, renderSheet, updateLightbox } from './sheet.js';
@@ -25,7 +26,12 @@ document.addEventListener('input', function (e) {
   if (t.id === 'cd-kind') { getCd().kind = t.value; return }
   if (t.dataset && t.dataset.f) {
     var v = VV(); if (!v) return; var f = t.dataset.f, val = t.type === 'checkbox' ? t.checked : t.value;
-    if (f === 'plaque') { val = val ? fmtPlate(val.toUpperCase()) : ''; if (t.value !== val) t.value = val }
+    if (f === 'plaqueType') {
+      val = val === 'etr' ? 'etr' : 'fr'; v.plaqueType = val;
+      var pe = $('#f-plaque'), np = formatPlate(v.plaque || '', val); v.plaque = np;
+      if (pe) { pe.value = np; pe.placeholder = PLAQUE[val].ph; pe.maxLength = PLAQUE[val].max }
+      if (S.cur) pend.plaque = np; clearInvalid('plaque');
+    } else if (typeof val === 'string') { var clean = cleanField(v, f, val); if (clean !== val) { val = clean; t.value = clean } }
     v[f] = val; clearInvalid(f);
     if (f === 'dateLimite') { var sd = sortieDefaut(v, todayISO()); if (sd) { v.sortiePrevue = sd; if (S.cur) pend.sortiePrevue = sd; var se = $('#f-sortiePrevue'); if (se) se.value = sd; clearInvalid('sortiePrevue') } }
     if (S.cur) { pend[f] = val; clearTimeout(T.tmr); T.tmr = setTimeout(function () { flush().then(refreshChrome) }, 500) }
@@ -34,7 +40,7 @@ document.addEventListener('input', function (e) {
     return;
   }
   if (t.dataset && t.dataset.mk != null) { var v2 = VV(), m = (v2.marks || []).map(function (x) { return Object.assign({}, x) }); var i = +t.dataset.mk; if (m[i]) { m[i][t.dataset.mf] = t.value; v2.marks = m; pend.marks = m; clearTimeout(T.tmr); T.tmr = setTimeout(flush, 500); if (t.tagName === 'SELECT') renderSheet(true) } return }
-  if (t.dataset && t.dataset.mesk) { var v4 = VV(); v4.mes = Object.assign({}, v4.mes || {}); v4.mes[t.dataset.mesk] = t.value; pend.mes = Object.assign({}, pend.mes || {}); pend.mes[t.dataset.mesk] = t.value; clearTimeout(T.tmr); T.tmr = setTimeout(flush, 500); return }
+  if (t.dataset && t.dataset.mesk) { t.value = sanitize(t.value, { digits: true, max: 4 }); var v4 = VV(); v4.mes = Object.assign({}, v4.mes || {}); v4.mes[t.dataset.mesk] = t.value; pend.mes = Object.assign({}, pend.mes || {}); pend.mes[t.dataset.mesk] = t.value; clearTimeout(T.tmr); T.tmr = setTimeout(flush, 500); return }
   if (t.dataset && t.dataset.ck) { var v3 = VV(); v3.chk = Object.assign({}, v3.chk || {}); var c = Object.assign({}, v3.chk[t.dataset.ck] || { s: 'def' }); c.n = t.value; v3.chk[t.dataset.ck] = c; pend.chk = Object.assign({}, pend.chk || {}); pend.chk[t.dataset.ck] = c; clearTimeout(T.tmr); T.tmr = setTimeout(flush, 500); return }
 });
 document.addEventListener('click', function (e) {

@@ -2,7 +2,7 @@ import { renderMain } from './board.js';
 import { camClose, camImport, camOpen, camShot, camSkip, camSwitch } from './camera.js';
 import { cdSave, getCd } from './compl.js';
 import { COLS } from './constants.js';
-import { $, S, TAMPON, VV, missingForEntry, api, flush, hist, save, srcOf, toast } from './core.js';
+import { $, S, TAMPON, VV, entryErrors, api, flush, hist, save, srcOf, toast } from './core.js';
 import { autoCreate, closeSheet, createDossier, lockConfirm, newEntry, openDossier, undoSig, validateEntry } from './dossier.js';
 import { makePdf } from './pdf.js';
 import { canShoot, commitPhoto, complSink, delPhoto, doImport, handlePdf, startQueue } from './photos.js';
@@ -21,8 +21,8 @@ export function act(a, b) {
   if (a === 'tampon') { var vt = VV(); vt.dateLimite = TAMPON; if (S.cur) save({ dateLimite: TAMPON }); renderSheet(true); toast('Voiture tampon : 01/01/2100'); return }
   if (a === 'status') { var v2 = VV(); save({ statut: d.v, hist: hist(v2, 'Statut : ' + (COLS.filter(function (c) { return c[0] === d.v })[0] || [0, d.v])[1]) }); renderSheet(true); return }
   if (a === 'validate') {
-    var v3 = VV(), miss = missingForEntry(v3);
-    if (miss.length) { showMissing(miss); toast(miss.length + (miss.length > 1 ? ' champs obligatoires à remplir' : ' champ obligatoire à remplir')); return }
+    var v3 = VV(), miss = entryErrors(v3);
+    if (miss.length) { showMissing(miss); toast(miss.length + (miss.length > 1 ? ' champs à remplir ou corriger' : ' champ à remplir ou corriger')); return }
     var todo = readiness(v3).filter(function (x) { return !x.ok })[0];
     if (todo) { S.tab = todo.tab; renderSheet(); toast('À compléter : ' + todo.t); return }
     lockConfirm(null); return

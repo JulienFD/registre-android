@@ -1,7 +1,7 @@
 import { renderMain } from './board.js';
 import { camClose } from './camera.js';
 import { FL } from './constants.js';
-import { $, S, V, VV, api, esc, flush, hist, lastWho, missingForCreate, normPlate, queues, save, setSave, snapOf, toast } from './core.js';
+import { $, S, V, VV, api, esc, flush, hist, lastWho, missingForCreate, normPlate, plateValid, queues, save, setSave, snapOf, toast } from './core.js';
 import { makePdf } from './pdf.js';
 import { modalShow } from './pin.js';
 import { refreshChrome, renderSheet, showMissing } from './sheet.js';
@@ -15,7 +15,7 @@ export function openDossier(id, tab) {
 }
 export function newEntry() {
   S.cur = null; S.photos = []; S.tab = 'infos'; S.unlocked = null; S.cdraft = null; S.invalid = [];
-  S.draft = { type: '', recep: lastWho(), sortiePrevue: '' };
+  S.draft = { type: '', plaqueType: 'fr', recep: lastWho(), sortiePrevue: '' };
   renderSheet();
 }
 export function closeSheet() {
@@ -45,7 +45,7 @@ function startDossier(d) {
 }
 /* Enregistre le brouillon dès que la plaque et le réceptionnaire sont connus, sans toucher à l'écran. */
 export function autoCreate() {
-  var d = S.draft; if (!d || S.cur || !normPlate(d.plaque) || !d.recep) return;
+  var d = S.draft; if (!d || S.cur || !plateValid(d.plaque, d.plaqueType) || !d.recep) return;
   startDossier(d);
   if (!$('#sheet').hidden) refreshChrome();
 }
