@@ -4,14 +4,15 @@ import { $, S, due, esc, fmtDT, limite, plateHtml } from './core.js';
 /* ---------- tableau ---------- */
 function card(v) {
   var t = TYPES[v.type] || { l: 'Type à préciser', c: '--ink2' }; var d = due(v);
-  var np=v.pe||0,lim=limite(v);
+  var np = v.pe || 0, lim = limite(v), memeDate = !!lim && v.dateLimite === v.sortiePrevue;
+  var nom = [v.marque, v.modele].filter(Boolean).join(' '), mod = nom + (v.couleur ? (nom ? ' · ' : '') + v.couleur : '');
   return '<button class="card" data-act="open" data-id="' + esc(v.id) + '" style="--c:var(' + t.c + ')">' +
     '<div class="r1">' + plateHtml(v.plaque) + '<span class="chip" style="--c:var(' + t.c + ')">' + esc(t.l) + '</span></div>' +
-    '<div class="mod">'+esc([v.marque,v.modele].filter(Boolean).join(' ')||'Modèle non renseigné')+(v.couleur?' · '+esc(v.couleur):'')+'</div>'+
+    (mod ? '<div class="mod">' + esc(mod) + '</div>' : '') +
     '<div class="ops">' + esc(v.ops || 'Travaux à définir') + '</div>' +
     '<div class="r1"><span class="chip ' + d.c + '">' + esc(d.t) + '</span><span class="sv">' + np + '/' + SLOTS.length + ' photos</span></div>' +
-    (lim?'<div class="r1"><span class="chip '+lim.c+'">'+esc(lim.t)+'</span>'+(v.engageValide?'<span class="sv">validé par '+esc(v.engageValide)+'</span>':'')+'</div>':'')+
-    '<div class="meta"><span>Resp. '+esc(v.resp||'à désigner')+'</span>'+(v.entreeAt?'<span>Entrée '+esc(new Date(v.entreeAt).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}))+'</span>':'')+'</div></button>';
+    (lim && !memeDate ? '<div class="r1"><span class="chip ' + lim.c + '">' + esc(lim.t) + '</span>' + (v.engageValide ? '<span class="sv">validé par ' + esc(v.engageValide) + '</span>' : '') + '</div>' : '') +
+    '<div class="meta"><span>Resp. ' + esc(v.resp || 'à désigner') + '</span>' + (memeDate && v.engageValide ? '<span>Engagement validé par ' + esc(v.engageValide) + '</span>' : '') + (v.entreeAt ? '<span>Entrée ' + esc(new Date(v.entreeAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })) + '</span>' : '') + '</div></button>';
 }
 export function renderMain() {
   var m = $('#main');
@@ -24,8 +25,10 @@ export function renderMain() {
   if (S.view === 'arch') {
     var out = S.list.filter(function (v) { return v.statut === 'sorti' && match(v) }).sort(function (a, b) { return (b.sortieAt || 0) - (a.sortieAt || 0) });
     $('#nv-arch').textContent = 'Sorties (' + S.list.filter(function (v) { return v.statut === 'sorti' }).length + ')';
-    m.innerHTML=out.length?'<div class="arch">'+out.map(function(v){var t=TYPES[v.type]||{l:'',c:'--ink2'};
-      return '<button class="arow" data-act="open" data-id="'+esc(v.id)+'">'+plateHtml(v.plaque)+'<span class="grow"><b>'+esc([v.marque,v.modele].filter(Boolean).join(' '))+'</b><br><span class="sv">'+esc(v.clientNom||v.rattache||'')+'</span></span><span class="chip" style="--c:var('+t.c+')">'+esc(t.l)+'</span><span class="sv">Sortie '+esc(v.sortieAt?fmtDT(v.sortieAt):'')+(v.remisA?' · récupéré par '+esc(v.remisA):'')+'</span></button>'}).join('')+'</div>'
+    m.innerHTML = out.length ? '<div class="arch">' + out.map(function (v) {
+      var t = TYPES[v.type] || { l: '', c: '--ink2' };
+      return '<button class="arow" data-act="open" data-id="' + esc(v.id) + '">' + plateHtml(v.plaque) + '<span class="grow"><b>' + esc([v.marque, v.modele].filter(Boolean).join(' ')) + '</b><br><span class="sv">' + esc(v.clientNom || v.rattache || '') + '</span></span><span class="chip" style="--c:var(' + t.c + ')">' + esc(t.l) + '</span><span class="sv">Sortie ' + esc(v.sortieAt ? fmtDT(v.sortieAt) : '') + (v.remisA ? ' · récupéré par ' + esc(v.remisA) : '') + '</span></button>'
+    }).join('') + '</div>'
       : '<div class="empty"><h2>Aucune sortie</h2><p>Les véhicules rendus apparaissent ici avec leur dossier complet et le PDF d’entrée et de sortie.</p></div>';
     return;
   }
@@ -37,7 +40,7 @@ export function renderMain() {
   }
   m.innerHTML = '<div class="board">' + COLS.map(function (c) {
     var items = act.filter(function (v) { return (v.statut || 'brouillon') === c[0] && match(v) }).sort(function (a, b) { return (a.sortiePrevue || '9999').localeCompare(b.sortiePrevue || '9999') });
-    return '<section class="col"><h2>'+c[1]+'<b>'+items.length+'</b></h2><div class="stack">'+(items.length?items.map(card).join(''):'<div class="none">Aucun véhicule</div>')+'</div></section>';
+    return '<section class="col' + (items.length ? '' : ' vide') + '"><h2>' + c[1] + '<b>' + items.length + '</b></h2><div class="stack">' + (items.length ? items.map(card).join('') : '<div class="none">Aucun véhicule</div>') + '</div></section>';
   }).join('') + '</div>';
 }
 
