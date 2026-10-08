@@ -44,6 +44,24 @@
     return { t: 'Limite client ' + fmtD(v.dateLimite), c: d <= 1 ? 'warn' : '' };
   }
 
+  var CHAMPS_RECHERCHE = ['plaque', 'marque', 'modele', 'couleur', 'clientNom', 'clientTel', 'clientMail', 'rattache', 'resp', 'recep', 'ops'];
+
+  function foldText(s) {
+    return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9 ]/g, '');
+  }
+
+  /* Recherche libre (tous les mots, dans n'importe quel champ) + filtres type, responsable et retard. */
+  function matchVehicle(v, f, now) {
+    if (f.type && v.type !== f.type) return false;
+    if (f.resp && v.resp !== f.resp) return false;
+    if (f.retard && !(v.sortiePrevue && daysTo(v.sortiePrevue, now) < 0)) return false;
+    var words = foldText(f.q).split(' ').filter(Boolean);
+    if (!words.length) return true;
+    var texte = CHAMPS_RECHERCHE.map(function (k) { return foldText(v[k]) }).join(' ');
+    var compact = texte.replace(/ /g, '');
+    return words.every(function (w) { return compact.indexOf(w) > -1 });
+  }
+
   /* Champs obligatoires de l'entrée, dans l'ordre d'affichage du formulaire. */
   var ENTREE_REQUIS = ['plaque', 'type', 'resp', 'ops', 'dateLimite', 'engageValide', 'sortiePrevue', 'recep'];
   var CREATION_REQUIS = ['plaque', 'type', 'recep'];
@@ -144,7 +162,7 @@
     TAMPON: TAMPON, normPlate: normPlate, fmtPlate: fmtPlate, fmtD: fmtD, daysTo: daysTo, due: due, limite: limite,
     missingForCreate: missingForCreate, missingForEntry: missingForEntry, sortieDefaut: sortieDefaut,
     formatPlate: formatPlate, plateValid: plateValid, plateKind: plateKind, sanitize: sanitize, RULES: RULES,
-    invalidForEntry: invalidForEntry, entryErrors: entryErrors,
+    invalidForEntry: invalidForEntry, matchVehicle: matchVehicle, entryErrors: entryErrors,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = Utils;

@@ -1,5 +1,6 @@
 import { COLS, SLOTS, TYPES } from './constants.js';
-import { $, S, due, esc, fmtDT, limite, plateHtml } from './core.js';
+import { $, S, due, esc, fmtDT, limite, matchVehicle, plateHtml } from './core.js';
+import { activeFilters, renderFilters } from './filtres.js';
 
 /* ---------- tableau ---------- */
 function card(v) {
@@ -20,8 +21,9 @@ export function renderMain() {
   $('#nv-arch').className = 'btn' + (S.view === 'arch' ? ' on' : '');
   if (S.dberr) { m.innerHTML = '<div class="empty"><h2>Données illisibles</h2><p>' + esc(S.dberr) + '</p></div>'; return }
   if (!S.loaded) { m.innerHTML = '<div class="empty"><p>Chargement des dossiers…</p></div>'; return }
-  var q = S.q.trim().toUpperCase().replace(/[^A-Z0-9 ]/g, '');
-  var match = function (v) { return !q || [v.plaque, v.marque, v.modele, v.clientNom, v.resp, v.rattache, v.recep].join(' ').toUpperCase().replace(/[^A-Z0-9 ]/g, '').indexOf(q) > -1 };
+  renderFilters();
+  var q = S.q.trim() || activeFilters();
+  var match = function (v) { return matchVehicle(v, { q: S.q, type: S.f.type, resp: S.f.resp, retard: S.f.retard }) };
   if (S.view === 'arch') {
     var out = S.list.filter(function (v) { return v.statut === 'sorti' && match(v) }).sort(function (a, b) { return (b.sortieAt || 0) - (a.sortieAt || 0) });
     $('#nv-arch').textContent = 'Sorties (' + S.list.filter(function (v) { return v.statut === 'sorti' }).length + ')';
