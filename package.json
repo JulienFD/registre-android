@@ -1,0 +1,19 @@
+{
+  "name": "registre-vehicules-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Registre Vehicules - application Android (Capacitor)",
+  "scripts": {
+    "ajouter-android": "cap add android && node patch-android.js && cap sync android",
+    "synchroniser": "cap sync android",
+    "ouvrir": "cap open android",
+    "apk": "cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.4",
+    "@capacitor/share": "^8.0.3"
+  }
+}

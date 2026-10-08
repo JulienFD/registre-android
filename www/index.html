@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; media-src 'self' blob:; connect-src 'self' blob: data:; worker-src 'self' blob:;">
+<title>Registre Véhicules</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="top" class="top">
+  <div class="brand">Registre Véhicules<small>SP FORMATION · ATELIER DE TRAPPES</small></div>
+  <div class="nav" role="tablist">
+    <button class="btn" data-act="view" data-v="board" id="nv-board">Tableau</button>
+    <button class="btn" data-act="view" data-v="arch" id="nv-arch">Sorties</button>
+  </div>
+  <input id="q" class="search" type="search" placeholder="Plaque, modèle, client" aria-label="Rechercher un véhicule">
+  <button class="btn" data-act="settings" aria-label="Réglages protégés par le code PIN">Réglages</button>
+  <button class="btn pri" data-act="new">+ Nouvelle entrée</button>
+</div>
+<main id="main"></main>
+<div id="sheet" hidden></div>
+<div id="lightbox" hidden></div>
+<div id="camera" hidden></div>
+<div id="modal" hidden></div>
+<div id="toast" hidden></div>
+<datalist id="people"><option value="Jonathan"><option value="Hervé"><option value="Armand"><option value="Kévin"><option value="Romain"></datalist>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/pdf.min.js"></script>
+<script src="android-api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "appId": "fr.spformation.registrevehicules",
+  "appName": "Registre Vehicules",
+  "webDir": "www",
+  "server": { "androidScheme": "https" },
+  "android": { "allowMixedContent": false }
+}
