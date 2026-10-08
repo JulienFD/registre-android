@@ -1,14 +1,26 @@
 import { $, S, VV, api, esc, flush, fmtPlate, hist, save, snapOf, toast } from './core.js';
 import { renderSheet } from './sheet.js';
 
-export function modalShow(html){var m=$('#modal');m.innerHTML='<div class="mbox">'+html+'</div>';m.hidden=false}
-export function modalHide(){var m=$('#modal');m.hidden=true;m.innerHTML='';m.onclick=null}
+var avant = null;
+export function modalShow(html) {
+  var m = $('#modal');
+  if (m.hidden) avant = document.activeElement;
+  m.innerHTML = '<div class="mbox" role="dialog" aria-modal="true" aria-labelledby="mtitle" tabindex="-1">' + html + '</div>';
+  var h = m.querySelector('h2'); if (h) h.id = 'mtitle';
+  m.hidden = false; m.firstChild.focus();
+}
+export function modalHide() {
+  var m = $('#modal'); m.hidden = true; m.innerHTML = ''; m.onclick = null;
+  if (avant && avant.focus) avant.focus();
+  avant = null;
+}
+var KEYLAB = { '⌫': 'Effacer', 'OK': 'Valider le code' };
 function pinEntry(title, sub, o) {
   o = o || {};
   return new Promise(function (res) {
     var val = '';
-    function paint(){var h='';for(var i=0;i<Math.max(4,val.length);i++)h+='<i class="'+(i<val.length?'on':'')+'"></i>';var e=$('#pdots');if(e)e.innerHTML=h}
-    modalShow('<h2>'+esc(title)+'</h2>'+(sub?'<p class="hint">'+esc(sub)+'</p>':'')+'<div class="pinbox" id="pdots"></div><div class="perr" id="perr">'+esc(o.msg||'')+'</div><div class="keypad">'+['1','2','3','4','5','6','7','8','9','⌫','0','OK'].map(function(k){return '<button type="button" data-pin="'+k+'">'+k+'</button>'}).join('')+'</div>'+(o.cancel===false?'':'<div class="seg" style="justify-content:center"><button class="btn" data-pin="cancel">Annuler</button></div>'));
+    function paint() { var h = ''; for (var i = 0; i < Math.max(4, val.length); i++)h += '<i class="' + (i < val.length ? 'on' : '') + '"></i>'; var e = $('#pdots'); if (e) e.innerHTML = h; var st = $('#pstat'); if (st) st.textContent = val.length + ' chiffre' + (val.length > 1 ? 's' : '') + ' saisi' + (val.length > 1 ? 's' : '') }
+    modalShow('<h2>' + esc(title) + '</h2>' + (sub ? '<p class="hint">' + esc(sub) + '</p>' : '') + '<div class="pinbox" id="pdots" aria-hidden="true"></div><span class="sr" id="pstat" role="status"></span><div class="perr" id="perr" role="alert">' + esc(o.msg || '') + '</div><div class="keypad">' + ['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', 'OK'].map(function (k) { return '<button type="button" data-pin="' + k + '"' + (KEYLAB[k] ? ' aria-label="' + KEYLAB[k] + '"' : '') + '>' + k + '</button>' }).join('') + '</div>' + (o.cancel === false ? '' : '<div class="seg" style="justify-content:center"><button class="btn" data-pin="cancel">Annuler</button></div>'));
     paint();
     function done(r) { document.removeEventListener('keydown', kd, true); $('#modal').onclick = null; res(r) }
     function press(k) {
@@ -39,7 +51,7 @@ export async function askPin(title, sub) {
 export async function newPin(first) {
   var msg = '';
   for (; ;) {
-    var a=await pinEntry(first?'Créer le code PIN propriétaire':'Nouveau code PIN',first?'Ce code protège les corrections, le retrait d’éléments et les réglages. 4 à 8 chiffres. À ne donner à personne d’autre.':'4 à 8 chiffres',{cancel:!first,msg:msg});
+    var a = await pinEntry(first ? 'Créer le code PIN propriétaire' : 'Nouveau code PIN', first ? 'Ce code sera le code PIN administrateur de l’application (le code propriétaire). Il protège les corrections, le retrait d’éléments et les réglages. 4 à 8 chiffres. À ne donner à personne d’autre.' : '4 à 8 chiffres', { cancel: !first, msg: msg });
     if (a === null) { modalHide(); return null }
     var b = await pinEntry('Confirmer le code PIN', 'Saisir le même code une seconde fois', { cancel: !first });
     if (b === null) { modalHide(); return null }

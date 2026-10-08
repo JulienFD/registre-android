@@ -26,6 +26,7 @@ input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3{margin:0;font-family:var(--font-display);letter-spacing:.02em;text-transform:uppercase;text-wrap:balance}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 em{color:var(--bad);font-style:normal}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .brand{font:700 28px/1 var(--font-display);letter-spacing:.03em;text-transform:uppercase;margin-right:auto;white-space:nowrap}
