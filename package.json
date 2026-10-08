@@ -7,7 +7,10 @@
     "ajouter-android": "cap add android && node patch-android.js && cap sync android",
     "synchroniser": "cap sync android",
     "ouvrir": "cap open android",
-    "apk": "cd android && ./gradlew assembleDebug"
+    "apk": "cd android && ./gradlew assembleDebug",
+    "lint": "eslint .",
+    "test": "node --test tests/*.test.js",
+    "check": "npm run lint && npm test"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
@@ -15,5 +18,10 @@
     "@capacitor/core": "^8.5.3",
     "@capacitor/filesystem": "^8.1.4",
     "@capacitor/share": "^8.0.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0"
   }
 }
