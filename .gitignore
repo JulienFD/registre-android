@@ -1,0 +1,46 @@
+# Dépendances
+node_modules/
+
+# Android / Gradle (build et caches)
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Fichiers locaux machine (chemin du SDK, etc.)
+local.properties
+android/local.properties
+
+# Signature : ne jamais publier
+*.jks
+*.keystore
+keystore.properties
+google-services.json
+
+# Assets web copiés par `cap sync` (régénérés)
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/app/src/main/res/xml/config.xml
+
+# Secrets
+.env
+.env.*
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
