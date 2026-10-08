@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: APK et release GitHub
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npm run check
+      - run: npx cap sync android
+      - run: ./gradlew assembleDebug
+        working-directory: android
+      - name: Créer la release avec l'APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk "registre-vehicules-${GITHUB_REF_NAME}.apk"
+          gh release create "$GITHUB_REF_NAME" "registre-vehicules-${GITHUB_REF_NAME}.apk" \
+            --title "$GITHUB_REF_NAME" --generate-notes
