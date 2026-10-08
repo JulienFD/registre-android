@@ -37,31 +37,12 @@ var S={list:[],view:'board',q:'',cur:null,draft:null,tab:'infos',photos:[],pm:{}
 var queues={},pend={},tmr=null;
 
 /* ---------- utilitaires ---------- */
+var U=window.Utils,normPlate=U.normPlate,fmtPlate=U.fmtPlate,fmtD=U.fmtD,due=U.due,limite=U.limite,TAMPON=U.TAMPON;
 function V(id){for(var i=0;i<S.list.length;i++)if(S.list[i].id===id)return S.list[i];return null}
 function VV(){return S.cur?V(S.cur):S.draft}
-function normPlate(p){return String(p||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
-function fmtPlate(p){var n=normPlate(p);return /^[A-Z]{2}\d{3}[A-Z]{2}$/.test(n)?n.slice(0,2)+'-'+n.slice(2,5)+'-'+n.slice(5):(p||'—')}
 function plateHtml(p,lg){return '<span class="plate'+(lg?' lg':'')+'"><i>F</i><b>'+esc(fmtPlate(p))+'</b></span>'}
 function fmtDT(ts){return new Date(ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
-function fmtD(iso){return new Date(iso+'T12:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}
 function todayISO(){return new Date().toLocaleDateString('sv-SE')}
-function daysTo(iso){var a=new Date(iso+'T00:00'),b=new Date();b.setHours(0,0,0,0);return Math.round((a-b)/864e5)}
-function due(v){
-  if(!v.sortiePrevue)return {t:'Sortie à fixer',c:'warn'};
-  var d=daysTo(v.sortiePrevue);
-  if(d<0)return {t:'En retard de '+(-d)+' j',c:'bad'};
-  if(d===0)return {t:"Sort aujourd'hui",c:'warn'};
-  if(d===1)return {t:'Sort demain',c:'ok'};
-  return {t:'Sort '+fmtD(v.sortiePrevue),c:'ok'};
-}
-var TAMPON='2100-01-01';
-function limite(v){
-  if(!v.dateLimite)return null;
-  if(v.dateLimite===TAMPON)return {t:'Voiture tampon',c:''};
-  var d=daysTo(v.dateLimite);
-  if(d<0)return {t:'Limite client dépassée ('+fmtD(v.dateLimite)+')',c:'bad'};
-  return {t:'Limite client '+fmtD(v.dateLimite),c:d<=1?'warn':''};
-}
 function limTxt(v){return v.dateLimite===TAMPON?'voiture tampon, aucune date promise':new Date(v.dateLimite+'T12:00').toLocaleDateString('fr-FR')}
 function srcOf(p){if(p.url)return p.url;if(window.api&&window.api.photoUrl)return window.api.photoUrl(p);return '/data/vehicules/'+encodeURIComponent(p.vid)+'/photos/'+encodeURIComponent(p.file||p.id)+(p.kind==='pdf'?'.pdf':'.jpg')}
 var toastT=null;
@@ -69,7 +50,7 @@ function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(
 var CAM='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/></svg>';
 
 /* ---------- écriture ---------- */
-function setSave(s,e){var el=$('#sv');if(!el)return;
+function setSave(s){var el=$('#sv');if(!el)return;
   if(s==='saving'){el.textContent='Enregistrement…';el.className='sv'}
   else if(s==='ok'){el.textContent='Enregistré '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});el.className='sv'}
   else{el.textContent='Échec de l’enregistrement, vérifier la connexion';el.className='sv err'}}
@@ -127,7 +108,7 @@ var CK=[['lavage','Découvert après lavage'],['info','Information ou correction
 function ckLabel(k){return (CK.filter(function(c){return c[0]===k})[0]||[0,'Complément'])[1]}
 function lastWho(){var l='';try{l=localStorage.getItem('rv-recep')||''}catch(e){}return l}
 function getCd(){return S.cdraft||(S.cdraft={by:lastWho(),kind:'lavage',text:'',pics:[]})}
-function tabCompl(v){
+function tabCompl(){
   var d=getCd(),list=(S.cm[S.cur]||[]).slice().sort(function(a,b){return b.ts-a.ts});
   return '<div class="sec"><h3>Ajouter un complément</h3><p class="hint">Pour tout ce qui est découvert après l’entrée (après le lavage, en cours de travaux) : texte et photos s’ajoutent à la suite, datés et signés. Rien de ce qui a été enregistré avant n’est modifié ni effacé.</p>'+
     '<div class="grid2"><label class="fld"><span>Qui ajoute <em>*</em></span><input id="cd-by" type="text" list="people" value="'+esc(d.by)+'" autocomplete="off"></label>'+
@@ -250,7 +231,7 @@ function photoGrid(phase){
     '<button class="btn" style="align-self:flex-end" data-act="extra" data-phase="'+phase+'">'+CAM+'Prendre</button>'+
     '<button class="btn" style="align-self:flex-end" data-act="extragal" data-phase="'+phase+'">Importer</button></div>'+extraTiles(extras,phase)+'</div>';
 }
-function tabPhotos(v){return '<div class="sec"><h3>Photos à l’arrivée</h3><p class="hint">Chaque photo est enregistrée dès la prise de vue, avec la plaque, la date et l’heure incrustées. Les douze vues sont obligatoires pour valider l’entrée.</p><div id="pg-entree" class="sec" style="border:0;padding:0">'+photoGrid('entree')+'</div></div>'}
+function tabPhotos(){return '<div class="sec"><h3>Photos à l’arrivée</h3><p class="hint">Chaque photo est enregistrée dès la prise de vue, avec la plaque, la date et l’heure incrustées. Les douze vues sont obligatoires pour valider l’entrée.</p><div id="pg-entree" class="sec" style="border:0;padding:0">'+photoGrid('entree')+'</div></div>'}
 
 function carView(k){
   var vw=VIEWS[k],v=VV(),marks=(v.marks||[]);
@@ -380,12 +361,11 @@ function mountPads(){
 }
 function refreshChrome(){
   var v=VV();if(!v||$('#sheet').hidden)return;
-  var g=$('.gate');var sh=$('#sheet');
+  var sh=$('#sheet');
   var cur=sh.querySelector('.gate');
   var html=gate(v);
   if(cur){var d=document.createElement('div');d.innerHTML=html;if(d.firstChild)cur.replaceWith(d.firstChild);else cur.remove()}
   else if(html){sh.insertAdjacentHTML('beforeend',html)}
-  var n=$('.tab[data-v="photos"]');
 }
 function refreshPhotos(){
   ['entree','sortie'].forEach(function(ph){var el=$('#pg-'+ph);if(el){var inp=$('#xl-'+ph),val=inp?inp.value:'';el.innerHTML=photoGrid(ph);var i2=$('#xl-'+ph);if(i2)i2.value=val}});
@@ -835,10 +815,10 @@ async function buildPdf(v,photos,mode){
   ens(46);y+=4;h2("Signatures à l'entrée");sigs('Réceptionnaire',v.sigRecep,M);sigs('Client',v.sigClient,M+95);y+=34;
   txt("Les mentions ci-dessus ont été relevées à l'arrivée du véhicule et validées par signature.",M,y,{s:8,c:mut,w:W-2*M});
 
-  async function photoPages(list,title,note){
+  async function photoPages(list,title){
     if(!list.length)return;
     doc.addPage();band(title,fmtPlate(v.plaque));
-    var bw=(W-2*M-8)/2,bh=bw*0.75,col=0,row=0,y0=y;
+    var bw=(W-2*M-8)/2,bh=bw*0.75,col=0,row=0;
     for(var i=0;i<list.length;i++){
       var p=list[i];
       if(row===3){doc.addPage();band(title,fmtPlate(v.plaque));row=0;col=0}
