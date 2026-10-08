@@ -45,13 +45,14 @@ em{color:var(--bad);font-style:normal}
 .search{min-height:48px;border-radius:6px;border:1.5px solid var(--line);background:var(--surface);padding:0 12px;width:210px;max-width:100%}
 
 main{padding:16px}
-.board{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
-.col{flex:1 1 220px;background:var(--surface2);border-radius:8px;padding:10px;min-width:0}
-.col.vide{flex:0 1 120px}
+.board{display:flex;flex-direction:column;gap:14px}
+.col{background:var(--surface2);border-radius:8px;padding:10px;min-width:0}
 .col h2{font-size:20px;display:flex;justify-content:space-between;align-items:baseline;padding:4px 4px 10px}
 .col h2 b{font-weight:600;color:var(--ink2)}
-.stack{display:flex;flex-direction:column;gap:10px}
-.none{color:var(--ink2);font-size:14px;padding:14px 6px;text-align:center}
+.stack{display:flex;gap:10px;align-items:flex-start;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding-bottom:8px}
+.stack>.card{flex:0 0 min(280px,66%);width:auto;scroll-snap-align:start}
+.none{color:var(--ink2);font-size:14px;padding:4px 6px}
+.col.vide h2{padding-bottom:2px}
 
 .card{display:flex;flex-direction:column;gap:8px;text-align:left;width:100%;background:var(--surface);border:1.5px solid var(--line);border-top:7px solid var(--c,var(--line));border-radius:6px;padding:12px;min-width:0}
 .card .r1{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
