@@ -44,7 +44,34 @@
     return { t: 'Limite client ' + fmtD(v.dateLimite), c: d <= 1 ? 'warn' : '' };
   }
 
-  var Utils = { TAMPON: TAMPON, normPlate: normPlate, fmtPlate: fmtPlate, fmtD: fmtD, daysTo: daysTo, due: due, limite: limite };
+  /* Champs obligatoires de l'entrée, dans l'ordre d'affichage du formulaire. */
+  var ENTREE_REQUIS = ['plaque', 'type', 'resp', 'ops', 'dateLimite', 'engageValide', 'sortiePrevue', 'recep'];
+  var CREATION_REQUIS = ['plaque', 'type', 'recep'];
+
+  function manquants(v, cles) {
+    return cles.filter(function (k) {
+      return k === 'plaque' ? !normPlate(v.plaque) : !String(v[k] || '').trim();
+    });
+  }
+
+  function missingForEntry(v) {
+    return manquants(v, ENTREE_REQUIS);
+  }
+
+  function missingForCreate(v) {
+    return manquants(v, CREATION_REQUIS);
+  }
+
+  /* Date de sortie proposée d'après la date limite client ; null si on ne doit rien préremplir. */
+  function sortieDefaut(v, today) {
+    if (v.sortiePrevue || !v.dateLimite || v.dateLimite === TAMPON || v.dateLimite < today) return null;
+    return v.dateLimite;
+  }
+
+  var Utils = {
+    TAMPON: TAMPON, normPlate: normPlate, fmtPlate: fmtPlate, fmtD: fmtD, daysTo: daysTo, due: due, limite: limite,
+    missingForCreate: missingForCreate, missingForEntry: missingForEntry, sortieDefaut: sortieDefaut,
+  };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = Utils;
   else root.Utils = Utils;
