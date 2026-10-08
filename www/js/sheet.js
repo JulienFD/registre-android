@@ -1,6 +1,6 @@
 import { tabCompl } from './compl.js';
 import { CAM, CHECK, COLS, DMG, PANELS, SLOTS, SORTIE_REQ, TYPES, VIEWS } from './constants.js';
-import { $, S, V, VV, esc, fmtD, fmtDT, isLocked, limTxt, plateHtml, srcOf, todayISO } from './core.js';
+import { $, S, V, VV, esc, fmtD, fmtDT, isLocked, limTxt, missingForEntry, plateHtml, srcOf, todayISO } from './core.js';
 import { entrySet, exitSet } from './photos.js';
 
 function lockWrap(html, area) { return '<fieldset class="lockfs"' + (isLocked(VV(), area) ? ' disabled' : '') + '>' + html + '</fieldset>' }
@@ -18,27 +18,32 @@ export function readiness(v) {
   var es = entrySet(), np = SLOTS.filter(function (s) { return es[s.k] }).length;
   var nc = CHECK.filter(function (c) { return v.chk && v.chk[c.k] && v.chk[c.k].s }).length;
   return [
-    {t:'Informations',ok:!!(v.plaque&&v.recep&&v.type&&v.ops&&v.sortiePrevue&&v.resp&&v.dateLimite&&v.engageValide),tab:'infos'},
+    { t: 'Informations', ok: !missingForEntry(v).length, tab: 'infos' },
     { t: 'Photos ' + np + '/' + SLOTS.length, ok: np === SLOTS.length, tab: 'photos' },
     { t: 'Contrôle ' + nc + '/' + CHECK.length, ok: nc === CHECK.length, tab: 'dom' },
     { t: 'Signatures', ok: !!v.sigRecep && (!!v.sigClient || !!v.clientAbsent), tab: 'sign' }
   ];
 }
-function fld(f,label,o){o=o||{};var v=VV()||{};
-  return '<label class="fld"><span>'+label+(o.req?' <em>*</em>':'')+'</span><input id="f-'+f+'" data-f="'+f+'" type="'+(o.type||'text')+'" value="'+esc(v[f]==null?'':v[f])+'" placeholder="'+esc(o.ph||'')+'"'+(o.list?' list="'+o.list+'"':'')+(o.min?' min="'+o.min+'"':'')+(o.type==='number'?' inputmode="numeric"':'')+' autocomplete="off"></label>'}
-function area(f,label,o){o=o||{};var v=VV()||{};
-  return '<label class="fld"><span>'+label+(o.req?' <em>*</em>':'')+'</span><textarea id="f-'+f+'" data-f="'+f+'" rows="'+(o.rows||4)+'" placeholder="'+esc(o.ph||'')+'">'+esc(v[f]||'')+'</textarea></label>'}
+function isInvalid(f) { return S.invalid.indexOf(f) > -1 }
+function fld(f, label, o) {
+  o = o || {}; var v = VV() || {}; var inv = isInvalid(f);
+  return '<label class="fld' + (inv ? ' invalid' : '') + '"><span>' + label + (o.req ? ' <em>*</em>' : '') + '</span><input id="f-' + f + '" data-f="' + f + '"' + (inv ? ' aria-invalid="true"' : '') + ' type="' + (o.type || 'text') + '" value="' + esc(v[f] == null ? '' : v[f]) + '" placeholder="' + esc(o.ph || '') + '"' + (o.list ? ' list="' + o.list + '"' : '') + (o.min ? ' min="' + o.min + '"' : '') + (o.type === 'number' ? ' inputmode="numeric"' : '') + ' autocomplete="off"></label>'
+}
+function area(f, label, o) {
+  o = o || {}; var v = VV() || {}; var inv = isInvalid(f);
+  return '<label class="fld' + (inv ? ' invalid' : '') + '"><span>' + label + (o.req ? ' <em>*</em>' : '') + '</span><textarea id="f-' + f + '" data-f="' + f + '"' + (inv ? ' aria-invalid="true"' : '') + ' rows="' + (o.rows || 4) + '" placeholder="' + esc(o.ph || '') + '">' + esc(v[f] || '') + '</textarea></label>'
+}
 
 function tabInfos0(v) {
   var fuel = ['', 'Réserve', '1/4', '1/2', '3/4', 'Plein'];
   return '<div class="sec"><h3>Véhicule</h3><div class="grid2">' +
-    fld('plaque','Plaque d’immatriculation',{req:1,ph:'AB-123-CD'})+fld('marque','Marque',{ph:'Porsche'})+fld('modele','Modèle',{ph:'911 Carrera'})+fld('couleur','Couleur',{ph:'Gris'})+
-    fld('km','Kilométrage',{type:'number',ph:'45200'})+
+    fld('plaque', 'Plaque d’immatriculation', { req: 1, ph: 'Ex. AB-123-CD' }) + fld('marque', 'Marque', { ph: 'Ex. Porsche' }) + fld('modele', 'Modèle', { ph: 'Ex. 911 Carrera' }) + fld('couleur', 'Couleur', { ph: 'Ex. Gris' }) +
+    fld('km', 'Kilométrage', { type: 'number', ph: 'Ex. 45200' }) +
     '<label class="fld"><span>Niveau de carburant</span><select id="f-fuel" data-f="fuel">' + fuel.map(function (o) { return '<option value="' + esc(o) + '"' + ((v.fuel || '') === o ? ' selected' : '') + '>' + (o || 'Non relevé') + '</option>' }).join('') + '</select></label>' +
-    fld('cles','Clés remises (nombre)',{type:'number',ph:'2'})+'</div>'+
+    fld('cles', 'Clés remises (nombre)', { type: 'number', ph: 'Ex. 2' }) + '</div>' +
     area('objets', 'Objets personnels et accessoires laissés à bord', { rows: 2, ph: 'Aucun, ou liste précise' }) + '</div>' +
-  '<div class="sec"><h3>Nature de l’intervention <em>*</em></h3><div class="types">'+Object.keys(TYPES).map(function(k){return '<button class="type" style="--c:var('+TYPES[k].c+')" aria-pressed="'+(v.type===k)+'" data-act="type" data-v="'+k+'">'+TYPES[k].l+'</button>'}).join('')+'</div>'+
-    '<div class="grid2">'+fld('rattache','Rattaché à (session, stagiaire, parcours)',{ph:'Ex. session polissage du 14 octobre'})+fld('resp','Responsable de la voiture',{req:1,list:'people',ph:'Un nom'})+'</div></div>'+
+    '<div class="sec"><h3>Nature de l’intervention <em>*</em></h3><div class="types' + (isInvalid('type') ? ' invalid' : '') + '" id="f-type" tabindex="-1">' + Object.keys(TYPES).map(function (k) { return '<button class="type" style="--c:var(' + TYPES[k].c + ')" aria-pressed="' + (v.type === k) + '" data-act="type" data-v="' + k + '">' + TYPES[k].l + '</button>' }).join('') + '</div>' +
+    '<div class="grid2">' + fld('rattache', 'Rattaché à (session, stagiaire, parcours)', { ph: 'Ex. session polissage du 14 octobre' }) + fld('resp', 'Responsable de la voiture', { req: 1, list: 'people', ph: 'Ex. Jonathan' }) + '</div></div>' +
     '<div class="sec"><h3>Ce qui doit être fait</h3>' +
     area('ops', 'Opérations à réaliser', { req: 1, rows: 5, ph: 'Ex. décontamination, polissage 2 étapes capot et ailes, lavage intérieur' }) +
     area('dit', 'Ce qui a été dit au client (engagements, délais, limites)', { rows: 4, ph: 'Ex. la rayure du pare-chocs ne sera pas reprise, voiture rendue vendredi 17 h' }) +
@@ -47,7 +52,7 @@ function tabInfos0(v) {
     area('exclu', 'À ne pas faire', { rows: 2, ph: 'Ex. ne pas toucher aux jantes' }) + '</div>' +
     '<div class="sec"><h3>Dates et personnes</h3><div class="grid2">' +
     fld('sortiePrevue', 'Date de sortie prévue', { type: 'date', req: 1, min: todayISO() }) + fld('recep', 'Réceptionné par', { req: 1, list: 'people', ph: 'Jonathan, Hervé…' }) +
-    fld('clientNom','Client ou propriétaire',{ph:'Nom'})+fld('clientTel','Téléphone du client',{type:'tel'})+fld('clientMail','E-mail du client',{type:'email'})+'</div>'+
+    fld('clientNom', 'Client ou propriétaire', { ph: 'Ex. Dupont' }) + fld('clientTel', 'Téléphone du client', { type: 'tel' }) + fld('clientMail', 'E-mail du client', { type: 'email' }) + '</div>' +
     '<label class="tgl"><input type="checkbox" id="f-copie" data-f="copie"' + (v.copie ? ' checked' : '') + '> Le client reçoit une copie du PDF</label></div>';
 }
 
@@ -83,12 +88,16 @@ function tabPhotos() { return '<div class="sec"><h3>Photos à l’arrivée</h3><
 
 function carView(k) {
   var vw = VIEWS[k], v = VV(), marks = (v.marks || []);
-  var sh=vw.sh.map(function(s){var cls='s'+s[0];
-    return s[1]==='r'?'<rect class="'+cls+'" x="'+s[2]+'" y="'+s[3]+'" width="'+s[4]+'" height="'+s[5]+'" rx="'+s[6]+'"/>':'<circle class="'+cls+'" cx="'+s[2]+'" cy="'+s[3]+'" r="'+s[4]+'"/>'}).join('');
+  var sh = vw.sh.map(function (s) {
+    var cls = 's' + s[0];
+    return s[1] === 'r' ? '<rect class="' + cls + '" x="' + s[2] + '" y="' + s[3] + '" width="' + s[4] + '" height="' + s[5] + '" rx="' + s[6] + '"/>' : '<circle class="' + cls + '" cx="' + s[2] + '" cy="' + s[3] + '" r="' + s[4] + '"/>'
+  }).join('');
   var lab = k === 'top' ? '<text class="o" x="100" y="26" text-anchor="middle">AVANT</text><text class="o" x="100" y="396" text-anchor="middle">ARRIÈRE</text>' :
     '<text class="o" x="' + (k === 'left' ? 16 : 384) + '" y="160" text-anchor="' + (k === 'left' ? 'start' : 'end') + '">AVANT</text>';
-  var mk=marks.map(function(m,i){if(m.v!==k)return '';var col=(DMG.filter(function(d){return d[0]===m.t})[0]||DMG[5])[2];
-    return '<g class="mk"><circle cx="'+(m.x/100*vw.w)+'" cy="'+(m.y/100*vw.h)+'" r="'+(k==='top'?11:12)+'" fill="'+col+'"/><text x="'+(m.x/100*vw.w)+'" y="'+(m.y/100*vw.h)+'">'+(i+1)+'</text></g>'}).join('');
+  var mk = marks.map(function (m, i) {
+    if (m.v !== k) return ''; var col = (DMG.filter(function (d) { return d[0] === m.t })[0] || DMG[5])[2];
+    return '<g class="mk"><circle cx="' + (m.x / 100 * vw.w) + '" cy="' + (m.y / 100 * vw.h) + '" r="' + (k === 'top' ? 11 : 12) + '" fill="' + col + '"/><text x="' + (m.x / 100 * vw.w) + '" y="' + (m.y / 100 * vw.h) + '">' + (i + 1) + '</text></g>'
+  }).join('');
   return '<div class="cv' + (k === 'top' ? ' top-v' : '') + '"><h4>' + vw.lab + '</h4><svg viewBox="0 0 ' + vw.w + ' ' + vw.h + '" data-view="' + k + '" role="img" aria-label="Schéma ' + vw.lab + ', toucher pour marquer un défaut">' + sh + lab + mk + '</svg></div>';
 }
 function tabDom0(v) {
@@ -97,10 +106,13 @@ function tabDom0(v) {
     return '<div class="mrow"><span class="mnum" style="background:' + (DMG.filter(function (d) { return d[0] === m.t })[0] || DMG[5])[2] + '">' + (i + 1) + '</span>' +
       '<select class="mt" data-mk="' + i + '" data-mf="t" aria-label="Type de défaut" style="min-height:44px;border-radius:6px;border:1.5px solid var(--line);background:var(--bg);padding:0 8px">' + DMG.map(function (d) { return '<option value="' + d[0] + '"' + (m.t === d[0] ? ' selected' : '') + '>' + d[1] + '</option>' }).join('') + '</select>' +
       '<input type="text" data-mk="' + i + '" data-mf="n" value="' + esc(m.n || '') + '" placeholder="Précision (taille, position)" aria-label="Précision du défaut ' + (i + 1) + '">' +
-      '<button class="btn sm bad" data-act="delmk" data-i="'+i+'" aria-label="Supprimer le défaut '+(i+1)+'">Supprimer</button></div>'}).join('');
-  var ch=CHECK.map(function(c){var s=(v.chk&&v.chk[c.k])||{};
+      '<button class="btn sm bad" data-act="delmk" data-i="' + i + '" aria-label="Supprimer le défaut ' + (i + 1) + '">Supprimer</button></div>'
+  }).join('');
+  var ch = CHECK.map(function (c) {
+    var s = (v.chk && v.chk[c.k]) || {};
     return '<div class="crow"><span>' + esc(c.l) + '</span><div class="sgm">' + [['ras', 'RAS'], ['def', 'Défaut'], ['na', 'N/A']].map(function (o) { return '<button class="' + o[0] + '" aria-pressed="' + (s.s === o[0]) + '" data-act="chk" data-k="' + c.k + '" data-s="' + o[0] + '">' + o[1] + '</button>' }).join('') + '</div>' +
-      (s.s==='def'?'<div class="nt"><input type="text" data-ck="'+c.k+'" value="'+esc(s.n||'')+'" placeholder="Décrire le défaut constaté" aria-label="Défaut : '+esc(c.l)+'"></div>':'')+'</div>'}).join('');
+      (s.s === 'def' ? '<div class="nt"><input type="text" data-ck="' + c.k + '" value="' + esc(s.n || '') + '" placeholder="Décrire le défaut constaté" aria-label="Défaut : ' + esc(c.l) + '"></div>' : '') + '</div>'
+  }).join('');
   return '<div class="sec"><h3>Schéma des dommages</h3><p class="hint">Choisir le type de défaut, puis toucher le schéma à l’endroit exact.</p>' +
     '<div class="dmg">' + DMG.map(function (d) { return '<button class="btn sm' + (S.dmg === d[0] ? ' on' : '') + '" data-act="dmg" data-v="' + d[0] + '"><span style="width:12px;height:12px;border-radius:50%;background:' + d[2] + ';display:inline-block"></span>' + d[1] + '</button>' }).join('') + '</div>' +
     '<div class="carviews">' + carView('top') + carView('left') + carView('right') + '</div>' +
@@ -157,8 +169,10 @@ function tabSortie(v) {
     '<div class="sec"><h3>Photos à la sortie</h3><p class="hint">Même série que l’entrée, la photo d’entrée apparaît en vignette pour comparer.</p><div id="pg-sortie" class="sec" style="border:0;padding:0">' + photoGrid('sortie') + '</div></div>' +
     sigBlock('sigSortie', 'Signature à la remise', v.remisA);
 }
-export function exitReady(v){var es=exitSet(),n=SLOTS.filter(function(s,i){return i<SORTIE_REQ&&es[s.k]}).length;
-  return [{t:'Rendu par et récupéré par',ok:!!(v.remisPar&&v.remisA)},{t:'Travaux confirmés',ok:!!v.opsFaites},{t:'Photos '+n+'/'+SORTIE_REQ,ok:n===SORTIE_REQ},{t:'Signature',ok:!!v.sigSortie}]}
+export function exitReady(v) {
+  var es = exitSet(), n = SLOTS.filter(function (s, i) { return i < SORTIE_REQ && es[s.k] }).length;
+  return [{ t: 'Rendu par et récupéré par', ok: !!(v.remisPar && v.remisA) }, { t: 'Travaux confirmés', ok: !!v.opsFaites }, { t: 'Photos ' + n + '/' + SORTIE_REQ, ok: n === SORTIE_REQ }, { t: 'Signature', ok: !!v.sigSortie }]
+}
 
 function sheetHead(v) {
   var t = TYPES[v.type];
@@ -177,8 +191,8 @@ function sheetHead(v) {
 function gate(v) {
   if (!S.cur) return '<div class="gate"><div class="shin"><div class="chips"><span class="sv">Renseigner la plaque, le réceptionnaire et la nature de l’intervention pour créer le dossier et passer aux photos.</span></div><button class="btn pri shoot" data-act="create">Créer le dossier et prendre les photos</button></div></div>';
   if (v.statut === 'brouillon') {
-    var r=readiness(v),all=r.every(function(x){return x.ok});
-    return '<div class="gate"><div class="shin"><div class="chips">'+r.map(function(x){return '<button class="chip '+(x.ok?'ok':'warn')+'" data-act="tab" data-v="'+x.tab+'" style="background:none">'+(x.ok?'✓ ':'')+esc(x.t)+'</button>'}).join('')+'</div><button class="btn pri shoot" data-act="validate"'+(all?'':' disabled')+'>Valider l’entrée</button></div></div>';
+    var r = readiness(v);
+    return '<div class="gate"><div class="shin"><div class="chips">' + r.map(function (x) { return '<button class="chip ' + (x.ok ? 'ok' : 'warn') + '" data-act="tab" data-v="' + x.tab + '" style="background:none">' + (x.ok ? '✓ ' : '') + esc(x.t) + '</button>' }).join('') + '</div><button class="btn pri shoot" data-act="validate">Valider l’entrée</button></div></div>';
   }
   if (S.tab === 'sortie' && v.statut !== 'sorti') {
     var e = exitReady(v), ok = e.every(function (x) { return x.ok });
@@ -195,6 +209,22 @@ export function renderSheet(keepScroll) {
   sh.hidden = false; document.documentElement.style.overflow = 'hidden';
   sh.scrollTop = y;
   mountPads();
+}
+/* Marque en rouge les champs obligatoires vides, ouvre l'onglet Informations et amène le premier à l'écran. */
+export function showMissing(keys) {
+  S.invalid = keys.slice();
+  S.tab = 'infos'; renderSheet(true);
+  var first = $('#f-' + keys[0]); if (!first) return;
+  var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  first.scrollIntoView({ block: 'center', behavior: calme ? 'auto' : 'smooth' });
+  first.focus({ preventScroll: true });
+}
+export function clearInvalid(f) {
+  var i = S.invalid.indexOf(f); if (i < 0) return;
+  S.invalid.splice(i, 1);
+  var el = $('#f-' + f); if (!el) return;
+  el.removeAttribute('aria-invalid'); el.classList.remove('invalid');
+  var l = el.closest('.fld'); if (l) l.classList.remove('invalid');
 }
 function mountPads() {
   document.querySelectorAll('canvas.pad').forEach(function (cv) {

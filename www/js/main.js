@@ -1,16 +1,17 @@
 import { act } from './actions.js';
 import { renderMain } from './board.js';
 import { getCd } from './compl.js';
-import { $, S, T, VV, api, flush, fmtDT, isLocked, pend, save, toast } from './core.js';
+import { $, S, T, VV, api, flush, fmtDT, fmtPlate, isLocked, pend, save, sortieDefaut, todayISO, toast } from './core.js';
 import { autoCreate } from './dossier.js';
 import { newPin } from './pin.js';
-import { refreshChrome, renderSheet, updateLightbox } from './sheet.js';
+import { clearInvalid, refreshChrome, renderSheet, updateLightbox } from './sheet.js';
 
 document.addEventListener('click', function (e) {
   var b = e.target.closest('[data-act]');
   if (!b) { return }
   if (b.dataset.act === 'view' && (b.dataset.slot || b.dataset.pid)) {
-    S.lb=b.dataset.pid||(b.dataset.phase+'_'+b.dataset.slot);updateLightbox();return}
+    S.lb = b.dataset.pid || (b.dataset.phase + '_' + b.dataset.slot); updateLightbox(); return
+  }
   act(b.dataset.act, b);
 });
 /* Brouillon : créé dès qu'on quitte un champ, ou quand l'app passe en arrière-plan. */
@@ -24,8 +25,9 @@ document.addEventListener('input', function (e) {
   if (t.id === 'cd-kind') { getCd().kind = t.value; return }
   if (t.dataset && t.dataset.f) {
     var v = VV(); if (!v) return; var f = t.dataset.f, val = t.type === 'checkbox' ? t.checked : t.value;
-    if(f==='plaque'){val=val.toUpperCase();if(t.value!==val)t.value=val}
-    v[f]=val;
+    if (f === 'plaque') { val = val ? fmtPlate(val.toUpperCase()) : ''; if (t.value !== val) t.value = val }
+    v[f] = val; clearInvalid(f);
+    if (f === 'dateLimite') { var sd = sortieDefaut(v, todayISO()); if (sd) { v.sortiePrevue = sd; if (S.cur) pend.sortiePrevue = sd; var se = $('#f-sortiePrevue'); if (se) se.value = sd; clearInvalid('sortiePrevue') } }
     if (S.cur) { pend[f] = val; clearTimeout(T.tmr); T.tmr = setTimeout(function () { flush().then(refreshChrome) }, 500) }
     if (t.type === 'checkbox') { if (S.cur) { flush() } renderSheet(true) }
     else if (S.cur) setTimeout(refreshChrome, 0);

@@ -1,33 +1,32 @@
 import { renderMain } from './board.js';
 import { camClose } from './camera.js';
-import { $, S, V, VV, api, esc, flush, hist, lastWho, normPlate, queues, save, setSave, snapOf, toast } from './core.js';
+import { FL } from './constants.js';
+import { $, S, V, VV, api, esc, flush, hist, lastWho, missingForCreate, normPlate, queues, save, setSave, snapOf, toast } from './core.js';
 import { makePdf } from './pdf.js';
 import { modalShow } from './pin.js';
-import { refreshChrome, renderSheet } from './sheet.js';
+import { refreshChrome, renderSheet, showMissing } from './sheet.js';
 
 export function openDossier(id, tab) {
   var v = V(id); if (!v) return;
-  S.cur=id;S.draft=null;S.unlocked=null;S.snap=null;S.cdraft=null;
+  S.cur = id; S.draft = null; S.unlocked = null; S.snap = null; S.cdraft = null; S.invalid = [];
   S.photos = S.pm[id] || (S.pm[id] = []);
   S.tab = tab || (v.statut === 'brouillon' ? 'photos' : 'infos');
   renderSheet();
 }
 export function newEntry() {
-  S.cur=null;S.photos=[];S.tab='infos';S.unlocked=null;S.cdraft=null;
+  S.cur = null; S.photos = []; S.tab = 'infos'; S.unlocked = null; S.cdraft = null; S.invalid = [];
   S.draft = { type: '', recep: lastWho(), sortiePrevue: '' };
   renderSheet();
 }
 export function closeSheet() {
   autoCreate(); flush(); camClose(true);
-  S.cur=null;S.draft=null;S.photos=[];S.lb=null;S.unlocked=null;S.snap=null;S.cdraft=null;
+  S.cur = null; S.draft = null; S.photos = []; S.lb = null; S.unlocked = null; S.snap = null; S.cdraft = null; S.invalid = [];
   $('#sheet').hidden = true; $('#lightbox').hidden = true; document.documentElement.style.overflow = ''; renderMain();
 }
 export function createDossier() {
   var d = S.draft; if (!d) return;
-  var pl=normPlate(d.plaque);
-  if(!pl){toast('Saisir la plaque d’immatriculation');return}
-  if(!d.recep){toast('Indiquer qui réceptionne le véhicule');return}
-  if(!d.type){toast('Choisir la nature de l’intervention');return}
+  var miss = missingForCreate(d);
+  if (miss.length) { showMissing(miss); toast('À remplir : ' + miss.map(function (k) { return FL[k] }).join(', ')); return }
   startDossier(d);
   S.tab = 'photos'; renderSheet();
 }

@@ -3,7 +3,7 @@ import { CHECK, FL } from './constants.js';
 export var $ = function (s, r) { return (r || document).querySelector(s) };
 export var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] }) };
 export var api = window.api;
-export var S={list:[],view:'board',q:'',cur:null,draft:null,tab:'infos',photos:[],pm:{},cm:{},busy:{},dmg:'rayure',lb:null,loaded:false,dberr:'',unlocked:null,snap:null,unlockTs:0,cdraft:null};
+export var S = { list: [], view: 'board', q: '', cur: null, draft: null, tab: 'infos', photos: [], pm: {}, cm: {}, busy: {}, dmg: 'rayure', lb: null, loaded: false, dberr: '', unlocked: null, snap: null, unlockTs: 0, cdraft: null, invalid: [] };
 export var queues = {};
 export var pend = {};
 export var T = { tmr: null };
@@ -14,6 +14,9 @@ export var fmtD = U.fmtD;
 export var due = U.due;
 export var limite = U.limite;
 export var TAMPON = U.TAMPON;
+export var missingForCreate = U.missingForCreate;
+export var missingForEntry = U.missingForEntry;
+export var sortieDefaut = U.sortieDefaut;
 export function V(id) { for (var i = 0; i < S.list.length; i++)if (S.list[i].id === id) return S.list[i]; return null }
 export function VV() { return S.cur ? V(S.cur) : S.draft }
 export function plateHtml(p, lg) { return '<span class="plate' + (lg ? ' lg' : '') + '"><i>F</i><b>' + esc(fmtPlate(p)) + '</b></span>' }
@@ -23,10 +26,12 @@ export function limTxt(v) { return v.dateLimite === TAMPON ? 'voiture tampon, au
 export function srcOf(p) { if (p.url) return p.url; if (window.api && window.api.photoUrl) return window.api.photoUrl(p); return '/data/vehicules/' + encodeURIComponent(p.vid) + '/photos/' + encodeURIComponent(p.file || p.id) + (p.kind === 'pdf' ? '.pdf' : '.jpg') }
 var toastT = null;
 export function toast(m) { var t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true }, 3600) }
-export function setSave(s){var el=$('#sv');if(!el)return;
+export function setSave(s) {
+  var el = $('#sv'); if (!el) return;
   if (s === 'saving') { el.textContent = 'Enregistrement…'; el.className = 'sv' }
   else if (s === 'ok') { el.textContent = 'Enregistré ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); el.className = 'sv' }
-  else{el.textContent='Échec de l’enregistrement, vérifier la connexion';el.className='sv err'}}
+  else { el.textContent = 'Échec de l’enregistrement, vérifier la connexion'; el.className = 'sv err' }
+}
 export function snapOf(v) { return JSON.parse(JSON.stringify(v)) }
 function shorten(x) { x = x == null ? '' : String(x); return x.length > 40 ? x.slice(0, 40) + '…' : x }
 function diffText(a, b) {
