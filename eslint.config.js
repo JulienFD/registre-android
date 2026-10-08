@@ -10,6 +10,10 @@ module.exports = [
     rules: { eqeqeq: ['error', 'always', { null: 'ignore' }], 'no-var': 'off', 'no-unused-vars': ['error', { caughtErrors: 'none' }], 'no-control-regex': 'off', 'no-empty': ['error', { allowEmptyCatch: true }] },
   },
   {
+    files: ['www/js/**/*.js'],
+    languageOptions: { sourceType: 'module' },
+  },
+  {
     files: ['www/utils.js', 'tests/**/*.js', '*.js'],
     languageOptions: { sourceType: 'commonjs', globals: { ...globals.node } },
   },

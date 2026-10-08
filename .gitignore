@@ -44,3 +44,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Captures Playwright
+.playwright-mcp/
