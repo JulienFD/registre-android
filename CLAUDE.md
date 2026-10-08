@@ -45,6 +45,7 @@ App Android (Capacitor 8, WebView) de suivi des véhicules en atelier, pour une 
 
 ## Tests
 
+- **Test d'abord (TDD)** : pour toute nouvelle fonctionnalité, écrire le test avant le code. Le voir échouer, puis écrire le minimum de code pour le faire passer, puis nettoyer. Pas de feature sans test écrit en premier.
 - Toute logique pure nouvelle ou modifiée a un test dans `tests/*.test.js` (`node:test` + `node:assert/strict`).
 - Un bug corrigé = un test qui échoue avant la correction.
 - Pas de dépendance au temps réel : injecter la date (`now`) dans les fonctions testées.
