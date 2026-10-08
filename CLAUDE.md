@@ -2,6 +2,13 @@
 
 App Android (Capacitor 8, WebView) de suivi des véhicules en atelier, pour une tablette Galaxy Tab. Interface en `www/` (JS/HTML/CSS sans framework), coque native dans `android/` (package `fr.spformation.registrevehicules`). Guide de fabrication de l'APK : `README-ANDROID.md`.
 
+## Structure de `www/`
+
+- `index.html` charge les scripts classiques (`android-api.js`, `utils.js`) puis le module `js/main.js`.
+- `js/` : modules ES natifs, sans bundler. `constants.js` (données), `core.js` (état `S`, sauvegarde, utilitaires), `board.js` (tableau), `sheet.js` (fiche et onglets), `compl.js`, `dossier.js` (création, verrouillage), `photos.js`, `camera.js`, `pin.js`, `pdf.js`, `actions.js` (clics), `main.js` (événements et démarrage).
+- `css/` : une feuille par zone (`base`, `sheet`, `fonts`, `modal`, `camera`, `lock`), chargées dans cet ordre par `index.html` (l'ordre compte pour la cascade).
+- Un nouveau code va dans le module de sa responsabilité ; ne pas recréer un fichier fourre-tout. Un module qui dépasse environ 300 lignes se redécoupe.
+
 ## Commandes
 
 - `npm run lint` : ESLint (`eslint.config.js`)
@@ -23,7 +30,7 @@ App Android (Capacitor 8, WebView) de suivi des véhicules en atelier, pour une 
 ## Conventions de code
 
 - JavaScript : `'use strict'`, `===`, pas de variable globale (IIFE ou module), `const`/`let` dans le code neuf, noms explicites en camelCase, constantes en MAJUSCULES.
-- Code existant dense (`www/app.js`, `www/android-api.js`) : ne le reformater pas en bloc. Améliorer ce qu'on touche (extraire une fonction pure, la tester).
+- Code existant dense (`www/js/`, `www/android-api.js`) : ne le reformater pas en bloc. Améliorer ce qu'on touche (extraire une fonction pure, la tester).
 - Toute donnée affichée passe par `esc()` (XSS). La CSP de `index.html` interdit les scripts inline : ne pas l'assouplir.
 - Android/Java : style Google Java, ressources en `snake_case`, aucune permission ajoutée sans nécessité (actuellement : caméra uniquement).
 - Dépendances : n'en ajouter qu'en cas de besoin avéré, versions verrouillées par `package-lock.json`.

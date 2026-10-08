@@ -1,0 +1,17 @@
+/* ---- fenêtres modales (PIN, confirmation, réglages) ---- */
+#modal{position:fixed;inset:0;z-index:70;background:rgba(5,10,12,.7);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+.mbox{background:var(--surface);color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:20px;width:min(440px,100%);display:flex;flex-direction:column;gap:14px}
+.mbox.wide{width:min(640px,100%)}
+.mbox h2{font-size:26px}
+.mbox p{margin:0;color:var(--ink2)}
+.pinbox{display:flex;justify-content:center;gap:10px;min-height:44px}
+.pinbox i{width:18px;height:18px;border-radius:50%;border:2px solid var(--ink2);display:block;align-self:center}
+.pinbox i.on{background:var(--ink);border-color:var(--ink)}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.keypad button{min-height:62px;font:600 26px var(--font-display);border-radius:8px;border:1.5px solid var(--line);background:var(--bg)}
+.keypad button:active{background:var(--surface2)}
+.perr{color:var(--bad);font-weight:600;min-height:22px;text-align:center}
+.mrow2{display:flex;gap:10px;flex-wrap:wrap}
+.mrow2 .btn{flex:1;min-width:120px}
+.path{font:13px/1.4 ui-monospace,Consolas,monospace;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;overflow-wrap:anywhere}
+
