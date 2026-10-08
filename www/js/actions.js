@@ -12,6 +12,8 @@ import { clearInvalid, exitReady, readiness, renderSheet, showMissing } from './
 export function act(a, b) {
   var d = b.dataset;
   if (a === 'view') { S.view = d.v; $('#q').value = ''; renderMain(); return }
+  if (a === 'filter') { S.f[d.k] = d.k === 'retard' ? !S.f.retard : (S.f[d.k] === d.v ? '' : d.v); renderMain(); return }
+  if (a === 'filter-reset') { S.f = { type: '', resp: '', retard: false }; renderMain(); return }
   if (a === 'new') { newEntry(); return }
   if (a === 'open') { openDossier(d.id); return }
   if (a === 'close') { closeSheet(); return }

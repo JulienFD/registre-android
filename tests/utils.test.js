@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { TAMPON, normPlate, fmtPlate, daysTo, due, limite, missingForCreate, missingForEntry, sortieDefaut, formatPlate, plateValid, plateKind, sanitize, RULES, invalidForEntry, entryErrors } = require('../www/utils.js');
+const { TAMPON, normPlate, fmtPlate, daysTo, due, limite, missingForCreate, missingForEntry, sortieDefaut, formatPlate, plateValid, plateKind, sanitize, RULES, invalidForEntry, entryErrors, matchVehicle } = require('../www/utils.js');
 
 const NOW = new Date('2026-10-08T15:30:00');
 
@@ -148,4 +148,42 @@ test('missingForEntry compte une plaque incomplète comme manquante', () => {
 
 test('entryErrors réunit manquants et invalides dans l\'ordre du formulaire', () => {
   assert.deepEqual(entryErrors({ ...COMPLET, ops: '', clientMail: 'x', plaque: '' }), ['plaque', 'ops', 'clientMail']);
+});
+
+const VEH = { plaque: 'AB123CD', marque: 'Peugeot', modele: '208', clientNom: 'Hélène Dupont', clientTel: '06 12 34 56 78', resp: 'Hervé', type: 'formation', sortiePrevue: '2026-10-07' };
+
+test('matchVehicle sans critère garde tout', () => {
+  assert.equal(matchVehicle(VEH, {}, NOW), true);
+});
+
+test('matchVehicle cherche par nom de client, sans accent ni casse', () => {
+  assert.equal(matchVehicle(VEH, { q: 'helene' }, NOW), true);
+  assert.equal(matchVehicle(VEH, { q: 'DUPONT' }, NOW), true);
+});
+
+test('matchVehicle exige tous les mots, dans n\'importe quel champ', () => {
+  assert.equal(matchVehicle(VEH, { q: 'peugeot dupont' }, NOW), true);
+  assert.equal(matchVehicle(VEH, { q: 'peugeot martin' }, NOW), false);
+});
+
+test('matchVehicle trouve une plaque saisie avec tirets et un téléphone espacé', () => {
+  assert.equal(matchVehicle(VEH, { q: 'ab-123-cd' }, NOW), true);
+  assert.equal(matchVehicle(VEH, { q: '0612345678' }, NOW), true);
+});
+
+test('matchVehicle filtre par type et par responsable', () => {
+  assert.equal(matchVehicle(VEH, { type: 'formation' }, NOW), true);
+  assert.equal(matchVehicle(VEH, { type: 'parcours' }, NOW), false);
+  assert.equal(matchVehicle(VEH, { resp: 'Hervé' }, NOW), true);
+  assert.equal(matchVehicle(VEH, { resp: 'Armand' }, NOW), false);
+});
+
+test('matchVehicle filtre les véhicules en retard', () => {
+  assert.equal(matchVehicle(VEH, { retard: true }, NOW), true);
+  assert.equal(matchVehicle({ ...VEH, sortiePrevue: '2026-10-09' }, { retard: true }, NOW), false);
+  assert.equal(matchVehicle({ ...VEH, sortiePrevue: '' }, { retard: true }, NOW), false);
+});
+
+test('matchVehicle combine recherche et filtres', () => {
+  assert.equal(matchVehicle(VEH, { q: 'dupont', type: 'parcours' }, NOW), false);
 });

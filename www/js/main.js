@@ -17,6 +17,7 @@ document.addEventListener('click', function (e) {
 });
 /* Brouillon : créé dès qu'on quitte un champ, ou quand l'app passe en arrière-plan. */
 document.addEventListener('change', function (e) { if (S.draft && e.target && e.target.dataset && e.target.dataset.f) autoCreate() });
+document.addEventListener('change', function (e) { var t = e.target; if (t.dataset && t.dataset.filter) { S.f[t.dataset.filter] = t.value; renderMain() } });
 document.addEventListener('visibilitychange', function () { if (document.hidden) { autoCreate(); flush() } });
 document.addEventListener('input', function (e) {
   var t = e.target;
