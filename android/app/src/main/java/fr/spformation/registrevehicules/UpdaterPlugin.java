@@ -3,6 +3,7 @@ package fr.spformation.registrevehicules;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.Settings;
 import androidx.core.content.FileProvider;
 import com.getcapacitor.JSObject;
@@ -45,7 +46,9 @@ public class UpdaterPlugin extends Plugin {
       call.reject("URL refusée");
       return;
     }
-    if (!getContext().getPackageManager().canRequestPackageInstalls()) {
+    // Avant Android 8, l'autorisation d'installer ne se demande pas application par application.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+        && !getContext().getPackageManager().canRequestPackageInstalls()) {
       Intent reglage =
           new Intent(
               Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
