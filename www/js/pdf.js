@@ -89,9 +89,9 @@ export async function buildPdf(v, photos, mode, cid) {
 
   doc.addPage(); band('DOMMAGES ET CONTRÔLE', fmtPlate(v.plaque));
   var marks = v.marks || [];
-  pdfCar(doc, 'top', M, y, 0.2, marks); pdfCar(doc, 'left', M + 48, y, 0.2, marks); pdfCar(doc, 'right', M + 48 + 86, y, 0.2, marks);
+  pdfCar(doc, 'top', M, y, 0.2, marks); pdfCar(doc, 'left', M + 48, y, 0.2, marks); pdfCar(doc, 'right', M + 48, y + 44, 0.2, marks);
   y += 0.2 * 400 + 4;
-  txt('Vue de dessus · côté gauche · côté droit', M, y, { s: 7, c: mut }); y += 6;
+  txt('Vue de dessus · côté gauche (haut) · côté droit (bas)', M, y, { s: 7, c: mut }); y += 6;
   h2('Dommages relevés');
   if (!marks.length) { txt('Aucun dommage marqué sur le schéma.', M, y, { s: 10 }); y += 7 }
   marks.forEach(function (m, i) { ens(7); var d = DMG.filter(function (x) { return x[0] === m.t })[0] || DMG[5]; txt((i + 1) + '.  ' + d[1] + (m.n ? ' : ' + m.n : '') + '  (' + VIEWS[m.v].lab.toLowerCase() + ')', M, y, { s: 10, w: W - 2 * M }); y += 6 });
