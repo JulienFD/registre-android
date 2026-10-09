@@ -195,7 +195,41 @@
     return { ok: true };
   }
 
+  var PREFIXE_PDF = { entree: 'EDL-ENTREE', full: 'DOSSIER-COMPLET', compl: 'COMPLEMENT' };
+
+  /* n : numéro du complément (1, 2, ...) ; now : date du jour, utilisée si la fiche n'a pas de date de création. */
+  function nomPdf(v, mode, n, now) {
+    var prefixe = PREFIXE_PDF[mode] || PREFIXE_PDF.full;
+    if (mode === 'compl') prefixe += '-' + ('0' + n).slice(-2);
+    return prefixe + '_' + normPlate(v.plaque) + '_' + new Date(v.createdAt || now).toLocaleDateString('sv-SE') + '.pdf';
+  }
+
+  /* La copie dans le dossier choisi ne concerne que les fiches dont l'entrée est verrouillée. */
+  function doitCopier(v) {
+    return !!v && !!v.statut && v.statut !== 'brouillon';
+  }
+
+  /* Regroupe les changements rapprochés : ecrire(id) part `delai` ms après le dernier changement, une fiche à la fois. */
+  function copieDiffere(ecrire, delai, surErreur) {
+    var attente = new Set(), minuteur = null, enCours = Promise.resolve();
+    function vider() {
+      clearTimeout(minuteur); minuteur = null;
+      var ids = Array.from(attente); attente.clear();
+      enCours = enCours.then(async function () {
+        for (var i = 0; i < ids.length; i++) {
+          try { await ecrire(ids[i]); } catch (e) { if (surErreur) surErreur(e, ids[i]); }
+        }
+      });
+      return enCours;
+    }
+    function planifier(id) {
+      attente.add(id); clearTimeout(minuteur); minuteur = setTimeout(vider, delai);
+    }
+    return { planifier: planifier, vider: vider };
+  }
+
   var Utils = {
+    nomPdf: nomPdf, doitCopier: doitCopier, copieDiffere: copieDiffere,
     verifierVersion: verifierVersion,
     parseVersion: parseVersion, versionCode: versionCode, miseAJourDisponible: miseAJourDisponible,
     TAMPON: TAMPON, normPlate: normPlate, fmtPlate: fmtPlate, fmtD: fmtD, daysTo: daysTo, due: due, limite: limite,
