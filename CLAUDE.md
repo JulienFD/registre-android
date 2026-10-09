@@ -32,7 +32,7 @@ App Android (Capacitor 8, WebView) de suivi des véhicules en atelier, pour une 
 - JavaScript : `'use strict'`, `===`, pas de variable globale (IIFE ou module), `const`/`let` dans le code neuf, noms explicites en camelCase, constantes en MAJUSCULES.
 - Code existant dense (`www/js/`, `www/android-api.js`) : ne le reformater pas en bloc. Améliorer ce qu'on touche (extraire une fonction pure, la tester).
 - Toute donnée affichée passe par `esc()` (XSS). La CSP de `index.html` interdit les scripts inline : ne pas l'assouplir.
-- Android/Java : style Google Java, ressources en `snake_case`, aucune permission ajoutée sans nécessité (actuellement : caméra uniquement).
+- Android/Java : style Google Java, ressources en `snake_case`, aucune permission ajoutée sans nécessité (actuellement : caméra et installation de la mise à jour).
 - Dépendances : n'en ajouter qu'en cas de besoin avéré, versions verrouillées par `package-lock.json`.
 - Ne jamais committer : clés de signature (`*.jks`, `keystore.properties`), `local.properties`, `.env`, APK, `node_modules/`.
 
@@ -40,7 +40,8 @@ App Android (Capacitor 8, WebView) de suivi des véhicules en atelier, pour une 
 
 - `www/` est le code source de l'app (versionné). Les copies générées par `cap sync` (`android/app/src/main/assets/public/`) ne s'éditent jamais à la main.
 - Changer le code natif seulement si un plugin Capacitor ne suffit pas ; une modification du manifeste passe par `patch-android.js` pour rester reproductible.
-- Aucun appel réseau ni secret dans l'app : les données restent locales. Si du réseau devient nécessaire, HTTPS uniquement.
+- Aucun secret dans l'app : les données restent locales. Seul appel réseau : la recherche de mise à jour (API GitHub `releases/latest`, HTTPS, dépôt public) ; tout nouvel appel reste en HTTPS uniquement.
+- Mise à jour automatique : `maj.js` + plugin natif `UpdaterPlugin`. L'APK de release doit toujours être signé avec la même clé (secrets GitHub `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`), sinon Android refuse la mise à jour par-dessus. Ne jamais perdre ni régénérer cette clé.
 - `./gradlew lintDebug` doit passer sans nouvel avertissement.
 
 ## Tests
