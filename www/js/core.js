@@ -7,6 +7,9 @@ export var S = { list: [], view: 'board', q: '', f: { type: '', resp: '', retard
 export var queues = {};
 export var pend = {};
 export var T = { tmr: null };
+/* Points d'accroche posés par d'autres modules (évite l'import circulaire core -> copie -> core). */
+export var hooks = { modifie: null };
+export function modifie(id) { if (hooks.modifie) hooks.modifie(id) }
 var U = window.Utils;
 export var normPlate = U.normPlate;
 export var fmtPlate = U.fmtPlate;
@@ -25,6 +28,9 @@ export var sanitize = U.sanitize;
 export function plateKindOf(v) { return v.plaqueType || U.plateKind(v.plaque) }
 export function cleanField(v, f, val) { return f === 'plaque' ? U.formatPlate(val, plateKindOf(v)) : U.RULES[f] ? U.sanitize(val, U.RULES[f]) : val }
 export var sortieDefaut = U.sortieDefaut;
+export var nomPdf = U.nomPdf;
+export var doitCopier = U.doitCopier;
+export var copieDiffere = U.copieDiffere;
 export function V(id) { for (var i = 0; i < S.list.length; i++)if (S.list[i].id === id) return S.list[i]; return null }
 export function VV() { return S.cur ? V(S.cur) : S.draft }
 export function plateHtml(p, lg) { return '<span class="plate' + (lg ? ' lg' : '') + '"><i>F</i><b>' + esc(fmtPlate(p)) + '</b></span>' }
@@ -63,7 +69,7 @@ export function save(local, wire) {
     v.hist = h;
   }
   setSave('saving');
-  queues[id] = (queues[id] || Promise.resolve()).then(function () { return api.write('vehicules/' + id, snapOf(V(id))) }).then(function () { setSave('ok') }, function (e) { setSave('err', e) });
+  queues[id] = (queues[id] || Promise.resolve()).then(function () { return api.write('vehicules/' + id, snapOf(V(id))) }).then(function () { setSave('ok'); modifie(id) }, function (e) { setSave('err', e) });
   return queues[id];
 }
 export function flush() { clearTimeout(T.tmr); var p = Object.assign({}, pend); Object.keys(pend).forEach(function (k) { delete pend[k] }); if (Object.keys(p).length) return save({}, p); return Promise.resolve() }

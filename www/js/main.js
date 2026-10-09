@@ -1,6 +1,7 @@
 import { act } from './actions.js';
 import { renderMain } from './board.js';
 import { getCd } from './compl.js';
+import { initCopie } from './copie.js';
 import { $, S, T, VV, api, flush, fmtDT, cleanField, formatPlate, isLocked, pend, sanitize, save, sortieDefaut, todayISO, toast } from './core.js';
 import { PLAQUE } from './constants.js';
 import { autoCreate } from './dossier.js';
@@ -55,6 +56,7 @@ document.addEventListener('click', function (e) {
 });
 
 /* ---------- démarrage ---------- */
+initCopie();
 renderMain();
 (async function () {
   try {

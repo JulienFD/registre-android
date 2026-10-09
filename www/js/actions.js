@@ -7,7 +7,7 @@ import { autoCreate, closeSheet, createDossier, lockConfirm, newEntry, openDossi
 import { installerMiseAJour, verifierMiseAJour } from './maj.js';
 import { makePdf } from './pdf.js';
 import { canShoot, commitPhoto, complSink, delPhoto, doImport, handlePdf, startQueue } from './photos.js';
-import { changePin, chooseArchive, closeSettings, modalHide, openSettings, relock, unlock } from './pin.js';
+import { changePin, chooseArchive, chooseCopie, closeSettings, modalHide, openSettings, relock, removeCopie, unlock } from './pin.js';
 import { clearInvalid, exitReady, readiness, renderSheet, showMissing } from './sheet.js';
 
 export function act(a, b) {
@@ -82,6 +82,8 @@ export function act(a, b) {
   if (a === 'closemodal') { closeSettings(); return }
   if (a === 'openarch') { api.openArchive(); return }
   if (a === 'chooseArch') { chooseArchive(); return }
+  if (a === 'chooseCopie') { chooseCopie(); return }
+  if (a === 'removeCopie') { removeCopie(); return }
   if (a === 'changepin') { changePin(); return }
   if (a === 'majcheck') { verifierMiseAJour(true); return }
   if (a === 'majinstall') { installerMiseAJour(d.url); return }
