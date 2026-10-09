@@ -14,7 +14,7 @@ module.exports = [
     languageOptions: { sourceType: 'module' },
   },
   {
-    files: ['www/utils.js', 'tests/**/*.js', '*.js'],
+    files: ['www/utils.js', 'tests/**/*.js', 'scripts/**/*.js', '*.js'],
     languageOptions: { sourceType: 'commonjs', globals: { ...globals.node } },
   },
 ];
