@@ -68,7 +68,7 @@ async function drawSettings() {
   var s = await api.settings();
   modalShow('<h2>Réglages</h2><p class="hint">Dossier des données de ce poste :</p><div class="path">' + esc(s.dataDir) + '</div><p class="hint">Dossier des archives PDF (lecture seule, avec registre d’intégrité) :</p><div class="path">' + esc(s.archiveDir) + '</div>' +
     '<p class="hint">Pour sauvegarder sur Google Drive : choisir ici un sous-dossier du dossier « Google Drive » créé par l’application Drive pour ordinateur, puis partager ce dossier en « Lecteur » avec l’équipe. Seul le propriétaire du Drive peut alors le modifier.</p>' +
-    '<div class="seg"><button class="btn" data-act="openarch">Ouvrir les archives</button><button class="btn" data-act="chooseArch">Changer le dossier d’archives</button><button class="btn" data-act="changepin">Changer le code PIN</button></div>' +
+    '<div class="seg"><button class="btn" data-act="openarch">Ouvrir les archives</button><button class="btn" data-act="chooseArch">Changer le dossier d’archives</button><button class="btn" data-act="changepin">Changer le code PIN</button><button class="btn" data-act="majcheck">Rechercher une mise à jour</button></div>' +
     '<p class="sv">Version ' + esc(s.version) + '</p><div class="seg"><button class="btn pri" data-act="closemodal">Fermer</button></div>');
 }
 export async function unlock() {

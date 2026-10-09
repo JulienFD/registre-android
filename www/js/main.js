@@ -4,6 +4,7 @@ import { getCd } from './compl.js';
 import { $, S, T, VV, api, flush, fmtDT, cleanField, formatPlate, isLocked, pend, sanitize, save, sortieDefaut, todayISO, toast } from './core.js';
 import { PLAQUE } from './constants.js';
 import { autoCreate } from './dossier.js';
+import { verifierMiseAJour } from './maj.js';
 import { newPin } from './pin.js';
 import { clearInvalid, refreshChrome, renderSheet, updateLightbox } from './sheet.js';
 
@@ -65,4 +66,5 @@ renderMain();
   S.loaded = true; renderMain();
   setInterval(function () { var c = $('#clk'); if (c) c.textContent = fmtDT(Date.now()) }, 15000);
   try { var ps = await api.pinStatus(); if (!ps.set) { var p = await newPin(true); var r = await api.pinSet(p); toast(r && r.ok ? 'Code PIN enregistré' : (r && r.error) || 'Code PIN non enregistré') } } catch (e) { }
+  verifierMiseAJour(false);
 })();

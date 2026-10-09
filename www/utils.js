@@ -158,7 +158,46 @@
     return ORDRE.filter(function (k) { return tous.indexOf(k) > -1; });
   }
 
+  var DEPOT_APK = 'https://github.com/JulienFD/registre-android/releases/download/';
+
+  /* 'v1.2.3' ou '1.2.3' -> [1, 2, 3] ; null si le format n'est pas respecté. */
+  function parseVersion(tag) {
+    var m = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(String(tag || ''));
+    return m ? [+m[1], +m[2], +m[3]] : null;
+  }
+
+  /* versionCode Android : doit croître à chaque version, sinon la mise à jour est refusée. */
+  function versionCode(tag) {
+    var v = parseVersion(tag);
+    return v ? v[0] * 10000 + v[1] * 100 + v[2] : null;
+  }
+
+  /* Réponse de l'API GitHub `releases/latest` -> { version, url } si plus récente que `courante`, sinon null. */
+  function miseAJourDisponible(release, courante) {
+    if (!release || release.draft || release.prerelease) return null;
+    var nouvelle = versionCode(release.tag_name), actuelle = versionCode(courante);
+    if (nouvelle === null || actuelle === null || nouvelle <= actuelle) return null;
+    var apk = (release.assets || []).find(function (a) {
+      return /\.apk$/.test(a.name) && String(a.browser_download_url).indexOf(DEPOT_APK) === 0;
+    });
+    return apk ? { version: parseVersion(release.tag_name).join('.'), url: apk.browser_download_url } : null;
+  }
+
+  /* La version de package.json doit dépasser tous les tags vX.Y.Z existants (sinon la release serait ignorée par les tablettes). */
+  function verifierVersion(version, tags) {
+    var code = versionCode(version);
+    if (code === null) return { ok: false, erreur: 'Version "' + version + '" invalide : attendu X.Y.Z' };
+    var derniere = (tags || []).filter(function (t) { return versionCode(t) !== null; })
+      .sort(function (a, b) { return versionCode(b) - versionCode(a); })[0];
+    if (derniere && code <= versionCode(derniere)) {
+      return { ok: false, erreur: 'Version ' + version + ' déjà publiée ou antérieure à ' + derniere + ' : l\'augmenter dans package.json (npm version minor --no-git-tag-version)' };
+    }
+    return { ok: true };
+  }
+
   var Utils = {
+    verifierVersion: verifierVersion,
+    parseVersion: parseVersion, versionCode: versionCode, miseAJourDisponible: miseAJourDisponible,
     TAMPON: TAMPON, normPlate: normPlate, fmtPlate: fmtPlate, fmtD: fmtD, daysTo: daysTo, due: due, limite: limite,
     missingForCreate: missingForCreate, missingForEntry: missingForEntry, sortieDefaut: sortieDefaut,
     formatPlate: formatPlate, plateValid: plateValid, plateKind: plateKind, sanitize: sanitize, RULES: RULES,

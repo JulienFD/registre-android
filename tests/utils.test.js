@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { TAMPON, normPlate, fmtPlate, daysTo, due, limite, missingForCreate, missingForEntry, sortieDefaut, formatPlate, plateValid, plateKind, sanitize, RULES, invalidForEntry, entryErrors, matchVehicle } = require('../www/utils.js');
+const { TAMPON, normPlate, fmtPlate, daysTo, due, limite, missingForCreate, missingForEntry, sortieDefaut, formatPlate, plateValid, plateKind, sanitize, RULES, invalidForEntry, entryErrors, matchVehicle, parseVersion, versionCode, miseAJourDisponible, verifierVersion } = require('../www/utils.js');
 
 const NOW = new Date('2026-10-08T15:30:00');
 
@@ -186,4 +186,67 @@ test('matchVehicle filtre les véhicules en retard', () => {
 
 test('matchVehicle combine recherche et filtres', () => {
   assert.equal(matchVehicle(VEH, { q: 'dupont', type: 'parcours' }, NOW), false);
+});
+
+test('parseVersion lit un tag vX.Y.Z et rejette le reste', () => {
+  assert.deepEqual(parseVersion('v1.2.3'), [1, 2, 3]);
+  assert.deepEqual(parseVersion('1.10.0'), [1, 10, 0]);
+  assert.equal(parseVersion('v1.2'), null);
+  assert.equal(parseVersion('latest'), null);
+  assert.equal(parseVersion(null), null);
+});
+
+test('versionCode croît avec la version (contrainte Android pour mettre à jour)', () => {
+  assert.equal(versionCode('v1.2.3'), 10203);
+  assert.ok(versionCode('v1.10.0') > versionCode('v1.9.9'));
+  assert.ok(versionCode('v2.0.0') > versionCode('v1.99.99'));
+  assert.equal(versionCode('abc'), null);
+});
+
+const URL_APK = 'https://github.com/JulienFD/registre-android/releases/download/v1.1.0/registre-vehicules-v1.1.0.apk';
+const release = (over) => Object.assign({
+  tag_name: 'v1.1.0', draft: false, prerelease: false,
+  assets: [{ name: 'registre-vehicules-v1.1.0.apk', browser_download_url: URL_APK }],
+}, over);
+
+test('miseAJourDisponible renvoie la version et l\'URL de l\'APK quand elle est plus récente', () => {
+  assert.deepEqual(miseAJourDisponible(release(), '1.0.0'), { version: '1.1.0', url: URL_APK });
+});
+
+test('miseAJourDisponible ne propose rien si la version est identique ou plus ancienne', () => {
+  assert.equal(miseAJourDisponible(release(), '1.1.0'), null);
+  assert.equal(miseAJourDisponible(release(), '1.2.0'), null);
+});
+
+test('miseAJourDisponible ignore brouillons, préversions, release sans APK ou réponse invalide', () => {
+  assert.equal(miseAJourDisponible(release({ draft: true }), '1.0.0'), null);
+  assert.equal(miseAJourDisponible(release({ prerelease: true }), '1.0.0'), null);
+  assert.equal(miseAJourDisponible(release({ assets: [] }), '1.0.0'), null);
+  assert.equal(miseAJourDisponible(null, '1.0.0'), null);
+  assert.equal(miseAJourDisponible(release({ tag_name: 'nightly' }), '1.0.0'), null);
+});
+
+test('miseAJourDisponible refuse un APK hors du dépôt officiel', () => {
+  const hors = release({ assets: [{ name: 'x.apk', browser_download_url: 'https://evil.example/x.apk' }] });
+  assert.equal(miseAJourDisponible(hors, '1.0.0'), null);
+});
+
+test('verifierVersion accepte une version supérieure à tous les tags existants', () => {
+  assert.deepEqual(verifierVersion('1.1.0', ['v1.0.0', 'v1.0.5']), { ok: true });
+  assert.deepEqual(verifierVersion('1.0.0', []), { ok: true });
+});
+
+test('verifierVersion refuse une version déjà publiée, antérieure ou mal formée', () => {
+  assert.equal(verifierVersion('1.0.5', ['v1.0.0', 'v1.0.5']).ok, false);
+  assert.equal(verifierVersion('1.0.1', ['v1.0.0', 'v1.0.5']).ok, false);
+  assert.equal(verifierVersion('1.10.0', ['v1.9.0']).ok, true);
+  assert.equal(verifierVersion('1.0', []).ok, false);
+});
+
+test('verifierVersion ignore les tags qui ne sont pas des versions', () => {
+  assert.equal(verifierVersion('1.0.1', ['v1.0.0', 'nightly']).ok, true);
+});
+
+test('verifierVersion explique le refus', () => {
+  assert.match(verifierVersion('1.0.0', ['v1.0.0']).erreur, /1\.0\.0/);
 });
