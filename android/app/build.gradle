@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+// Signature de release : variables d'environnement (CI) ou android/keystore.properties (local, non versionné).
+def signature = new Properties()
+def fichierSignature = rootProject.file('keystore.properties')
+if (fichierSignature.exists()) fichierSignature.withInputStream { signature.load(it) }
+def secret = { String cle -> System.getenv(cle) ?: signature.getProperty(cle) }
+
 android {
     namespace = "fr.spformation.registrevehicules"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +13,9 @@ android {
         applicationId "fr.spformation.registrevehicules"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Fournis par la CI à partir du tag vX.Y.Z ; versionCode doit croître pour que Android accepte la mise à jour.
+        versionCode((findProperty('versionCode') ?: 1) as int)
+        versionName(findProperty('versionName') ?: '1.0.0')
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +23,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (secret('KEYSTORE_PATH')) {
+                storeFile file(secret('KEYSTORE_PATH'))
+                storePassword secret('KEYSTORE_PASSWORD')
+                keyAlias secret('KEY_ALIAS')
+                keyPassword secret('KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

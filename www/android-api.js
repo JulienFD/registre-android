@@ -3,7 +3,7 @@
   'use strict';
   var C = window.Capacitor;
   if (window.api || !C || !C.Plugins || !C.Plugins.Filesystem) return;
-  var FS = C.Plugins.Filesystem, SH = C.Plugins.Share, D = 'DATA', CA = 'CACHE';
+  var FS = C.Plugins.Filesystem, SH = C.Plugins.Share, UP = C.registerPlugin('Updater'), D = 'DATA', CA = 'CACHE';
   var base = null, fails = 0, lockUntil = 0, ID = /^[A-Za-z0-9_-]{1,120}$/;
   function okId(s) { return typeof s === 'string' && ID.test(s) }
   function b64(u8) { var s = '', n = 0x8000; for (var i = 0; i < u8.length; i += n)s += String.fromCharCode.apply(null, u8.subarray(i, i + n)); return btoa(s) }
@@ -144,7 +144,9 @@
       if (!PINRE.test(String(n))) return { ok: false, error: 'Le code doit comporter de 4 à 8 chiffres' };
       var c = await cfg(); c.pin = await newPinRec(n); await wj('config.json', c); return { ok: true };
     },
-    settings: async function () { return { dataDir: 'Mémoire privée de l’application (tablette)', archiveDir: 'Archives dans l’application. Les boutons « PDF » ouvrent le partage Android pour les enregistrer sur Google Drive.', version: '1.0.0-android', pinSet: !!(await cfg()).pin } },
+    settings: async function () { return { dataDir: 'Mémoire privée de l’application (tablette)', archiveDir: 'Archives dans l’application. Les boutons « PDF » ouvrent le partage Android pour les enregistrer sur Google Drive.', version: (await UP.getVersion()).versionName, pinSet: !!(await cfg()).pin } },
+    appVersion: async function () { return (await UP.getVersion()).versionName },
+    installUpdate: function (url) { return UP.install({ url: url }) },
     chooseArchive: async function (pin) { var v = await verify(pin); if (!v.ok) return v; return { ok: true, archiveDir: 'archives' } }
   };
 })();

@@ -27,8 +27,14 @@ Sans Android Studio ouvert, en ligne de commande (si Java 17 et le kit Android s
 3. Lancer « Registre Vehicules ». Au premier lancement : créer le code PIN propriétaire, puis autoriser la caméra.
 
 ## Mettre à jour plus tard
-Modifier le contenu de `www/`, puis `npx cap sync android` et refaire « Build APK(s) ».
-Réinstaller par-dessus l'ancienne version conserve les dossiers.
+Voir « Mises à jour automatiques » ci-dessous. En local, réinstaller par-dessus conserve les dossiers uniquement si l'APK est signé avec la même clé.
+
+## Mises à jour automatiques (releases GitHub)
+- L'app cherche une nouvelle version à chaque lancement (et via Réglages > « Rechercher une mise à jour »). Si une release plus récente existe, elle propose de la télécharger puis ouvre l'installateur Android. Les dossiers et photos sont conservés.
+- **Publier une version** : augmenter `version` dans `package.json` (`npm version minor --no-git-tag-version`, ou `patch`/`major`) dans la PR. À la fusion sur `main`, la CI crée le tag `vX.Y.Z`, fabrique l'APK signé et publie la release. La CI (PR et release) refuse une version déjà publiée ou antérieure : chaque PR fusionnée doit donc augmenter la version.
+- **Clé de signature (une seule fois)** : `keytool -genkeypair -v -keystore registre.jks -alias registre -keyalg RSA -keysize 2048 -validity 10000`, puis ajouter dans GitHub (Settings > Secrets > Actions) `KEYSTORE_BASE64` (`base64 -i registre.jks`), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. **Sauvegarder `registre.jks` hors du dépôt : sans elle, plus aucune mise à jour possible sans désinstaller.**
+- **Première installation** : l'APK actuel de la tablette n'est pas signé avec cette clé. Le passage à la première version signée demande une désinstallation, qui efface les données : envoyer d'abord les PDF vers Drive. Ensuite, toutes les mises à jour se font par-dessus.
+- Au premier usage, Android demande d'autoriser l'installation d'applications depuis « Registre Vehicules ».
 
 ## Fonctionnement sur la tablette
 - Les dossiers, photos et PDF NexDiag sont enregistrés dans la mémoire privée de l'application. **Désinstaller l'application ou vider ses données efface tout.**
