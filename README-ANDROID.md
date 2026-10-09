@@ -41,6 +41,7 @@ Voir « Mises à jour automatiques » ci-dessous. En local, réinstaller par-des
 - Les boutons « PDF d'entrée (client) » et « PDF complet » créent le PDF (empreinte enregistrée dans le registre d'intégrité), puis ouvrent le partage Android : choisir **Drive** et le dossier d'archives.
 - Dossier Drive non modifiable : le créer sur le compte propriétaire, le partager en « Lecteur » avec l'équipe, et ne laisser que le compte de la tablette en « Éditeur ».
 - Les PDF créés automatiquement à la validation de l'entrée et de la sortie restent dans l'application : rouvrir le dossier et appuyer sur le bouton PDF pour les envoyer vers Drive.
+- **Copie automatique** : dans Réglages (code PIN), « Choisir le dossier de copie » ouvre le sélecteur de dossier Android (Drive, mémoire de la tablette, carte SD). L'application y crée un sous-dossier par fiche contenant le PDF d'entrée (figé, créé au verrouillage), un PDF par complément ajouté (figé) et `DOSSIER-COMPLET_…pdf`, réécrit environ 5 secondes après chaque modification d'une fiche verrouillée. L'archive interne et son registre d'intégrité restent la référence ; la copie est un confort. Si le dossier devient inaccessible, un message l'indique : le choisir à nouveau.
 - Sur Android, il n'existe pas de verrouillage des fichiers en lecture seule : la protection repose sur les droits Drive, le code PIN et l'historique.
 
 ## Limites à connaître
