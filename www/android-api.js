@@ -3,7 +3,7 @@
   'use strict';
   var C = window.Capacitor;
   if (window.api || !C || !C.Plugins || !C.Plugins.Filesystem) return;
-  var FS = C.Plugins.Filesystem, SH = C.Plugins.Share, UP = C.Plugins.Updater, D = 'DATA', CA = 'CACHE';
+  var FS = C.Plugins.Filesystem, SH = C.Plugins.Share, UP = C.Plugins.Updater, DP = C.Plugins.Dossier, D = 'DATA', CA = 'CACHE';
   var base = null, fails = 0, lockUntil = 0, ID = /^[A-Za-z0-9_-]{1,120}$/;
   function okId(s) { return typeof s === 'string' && ID.test(s) }
   function b64(u8) { var s = '', n = 0x8000; for (var i = 0; i < u8.length; i += n)s += String.fromCharCode.apply(null, u8.subarray(i, i + n)); return btoa(s) }
@@ -144,7 +144,24 @@
       if (!PINRE.test(String(n))) return { ok: false, error: 'Le code doit comporter de 4 à 8 chiffres' };
       var c = await cfg(); c.pin = await newPinRec(n); await wj('config.json', c); return { ok: true };
     },
-    settings: async function () { return { dataDir: 'Mémoire privée de l’application (tablette)', archiveDir: 'Archives dans l’application. Les boutons « PDF » ouvrent le partage Android pour les enregistrer sur Google Drive.', version: (await UP.getVersion()).versionName, pinSet: !!(await cfg()).pin } },
+    copieDossier: async function () { return (await cfg()).copie || null },
+    chooseCopie: async function (pin) {
+      var v = await verify(pin); if (!v.ok) return v;
+      var r; try { r = await DP.choisir() } catch (e) { return { ok: false, annule: true } }
+      var c = await cfg(); c.copie = { uri: r.uri, nom: r.nom }; await wj('config.json', c); return { ok: true };
+    },
+    removeCopie: async function (pin) {
+      var v = await verify(pin); if (!v.ok) return v;
+      var c = await cfg(); if (c.copie) { try { await DP.oublier({ arbre: c.copie.uri }) } catch (e) { } delete c.copie; await wj('config.json', c) }
+      return { ok: true };
+    },
+    /* Écrit un PDF dans le sous-dossier de la fiche ; renvoie null si aucun dossier de copie n'est choisi. */
+    copier: async function (o) {
+      var c = (await cfg()).copie; if (!c) return null;
+      var u8 = o.bytes instanceof Uint8Array ? o.bytes : new Uint8Array(o.bytes);
+      return DP.ecrire({ arbre: c.uri, dossier: o.dossier, nom: o.nom, data: b64(u8), ecraser: !!o.ecraser });
+    },
+    settings: async function () { return { copie: (await cfg()).copie || null, dataDir: 'Mémoire privée de l’application (tablette)', archiveDir: 'Archives dans l’application. Les boutons « PDF » ouvrent le partage Android pour les enregistrer sur Google Drive.', version: (await UP.getVersion()).versionName, pinSet: !!(await cfg()).pin } },
     appVersion: async function () { return (await UP.getVersion()).versionName },
     installUpdate: function (url) { return UP.install({ url: url }) },
     chooseArchive: async function (pin) { var v = await verify(pin); if (!v.ok) return v; return { ok: true, archiveDir: 'archives' } }

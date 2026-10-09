@@ -1,7 +1,7 @@
 import { camOpen } from './camera.js';
 import { getCd } from './compl.js';
 import { SLOTS } from './constants.js';
-import { $, S, V, VV, api, fmtDT, fmtPlate, hist, isLocked, save, srcOf, toast } from './core.js';
+import { $, S, V, VV, api, fmtDT, fmtPlate, hist, isLocked, modifie, save, srcOf, toast } from './core.js';
 import { askPin } from './pin.js';
 import { refreshPhotos } from './sheet.js';
 
@@ -51,7 +51,7 @@ export async function commitPhoto(src, item, opt) {
       if (item.phase === 'entree') upd.pe = cnt; else upd.ps = cnt;
     }
     if (old) upd.hist = hist(v, 'Photo reprise : ' + item.label + ' (version ' + rev + ', la précédente est conservée)', S.unlocked === id ? 'Propriétaire (code PIN)' : undefined);
-    if (Object.keys(upd).length) save(upd);
+    if (Object.keys(upd).length) save(upd); else modifie(id);
     delete S.busy[pid]; refreshPhotos();
     return { thumb: srcOf(rec) };
   } catch (e) { delete S.busy[pid]; refreshPhotos(); toast('Photo non enregistrée : ' + (e && e.message || 'erreur')); return null }

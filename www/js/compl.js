@@ -1,5 +1,6 @@
 import { CAM, CK, ckLabel } from './constants.js';
 import { S, V, api, esc, fmtDT, hist, lastWho, save, srcOf, toast } from './core.js';
+import { makePdf } from './pdf.js';
 import { renderSheet } from './sheet.js';
 
 export function getCd() { return S.cdraft || (S.cdraft = { by: lastWho(), kind: 'lavage', text: '', pics: [] }) }
@@ -39,6 +40,7 @@ export async function cdSave() {
     try { localStorage.setItem('rv-recep', d.by.trim()) } catch (e) { }
     save({ hist: hist(v, 'Complément ajouté : ' + ckLabel(d.kind) + ' (' + ids.length + ' photo' + (ids.length > 1 ? 's' : '') + ')', d.by.trim()) });
     S.cdraft = null; renderSheet(true); toast('Complément enregistré');
+    await makePdf('compl', true, cid);
   } catch (e) { toast('Complément non enregistré : ' + (e && e.message || 'erreur')) }
 }
 

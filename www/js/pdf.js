@@ -1,5 +1,5 @@
 import { CHECK, DMG, PANELS, TYPES, VIEWS, WORKER, ckLabel } from './constants.js';
-import { S, VV, api, flush, fmtD, fmtDT, fmtPlate, hist, limTxt, normPlate, save, srcOf, toast, todayISO } from './core.js';
+import { S, VV, api, flush, fmtD, fmtDT, fmtPlate, hist, limTxt, nomPdf, save, srcOf, toast } from './core.js';
 import { renderSheet } from './sheet.js';
 
 function L(s) { return String(s == null ? '' : s).replace(/[’‘]/g, "'").replace(/[–—]/g, '-').replace(/…/g, '...').replace(/[^\x00-\xFF]/g, '?') }
@@ -30,7 +30,8 @@ function pdfCar(doc, k, ox, oy, sc, marks) {
     doc.setTextColor(255, 255, 255); doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.text(String(i + 1), cx, cy + 1, { align: 'center' }); doc.setFont('helvetica', 'normal');
   });
 }
-async function buildPdf(v, photos, mode) {
+/* mode : 'entree', 'full' ou 'compl' (cid = identifiant du complément). */
+export async function buildPdf(v, photos, mode, cid) {
   mode = mode || 'full';
   var J = window.jspdf.jsPDF, doc = new J({ unit: 'mm', format: 'a4' }), W = 210, M = 14, y = 0, curTitle = '';
   var ink = [22, 37, 42], mut = [90, 105, 110], acc = [14, 90, 107], bad = [179, 38, 30];
@@ -46,7 +47,30 @@ async function buildPdf(v, photos, mode) {
   var es = photos.filter(function (p) { return p.phase === 'entree' }).sort(function (a, b) { return a.ts - b.ts });
   var xs = photos.filter(function (p) { return p.phase === 'sortie' }).sort(function (a, b) { return a.ts - b.ts });
 
-  band(mode === 'full' ? 'DOSSIER COMPLET DU VÉHICULE' : "ÉTAT DES LIEUX D'ENTRÉE", 'Dossier ' + v.id);
+  var cl = (S.cm[v.id] || []).slice().sort(function (a, b) { return a.ts - b.ts });
+  async function complements(list) {
+    for (var ci = 0; ci < list.length; ci++) {
+      var cc = list[ci], cp = photos.filter(function (p) { return p.phase === 'compl' && p.cid === cc.id }).sort(function (a, b) { return a.ts - b.ts });
+      ens(40); h2(fmtDT(cc.ts) + ' · ' + ckLabel(cc.kind) + ' · par ' + cc.by);
+      if (cc.text) { var th = txt(cc.text, M, y, { s: 10, w: W - 2 * M }); y += th + 4 }
+      var tw = (W - 2 * M - 8) / 3, th2 = tw * 0.75;
+      for (var pi = 0; pi < cp.length; pi++) {
+        var col = pi % 3; if (col === 0) ens(th2 + 12);
+        var im = await pdfImg(cp[pi]), px = M + col * (tw + 4);
+        if (im) { var rr = Math.min(tw / im.w, th2 / im.h); doc.addImage(im.d, 'JPEG', px, y, im.w * rr, im.h * rr) }
+        txt(cp[pi].label || '', px, y + th2 + 4, { s: 7, c: mut, w: tw });
+        if (col === 2 || pi === cp.length - 1) y += th2 + 10;
+      }
+      y += 4;
+    }
+  }
+  function finish() {
+    var n = doc.getNumberOfPages();
+    for (var i = 1; i <= n; i++) { doc.setPage(i); txt('Plaque ' + fmtPlate(v.plaque) + ' · Dossier ' + v.id, M, 290, { s: 7.5, c: mut }); txt('Page ' + i + ' / ' + n + ' · généré le ' + fmtDT(Date.now()), W - M, 290, { s: 7.5, c: mut, a: 'right' }) }
+    return doc.output('blob');
+  }
+
+  band(mode === 'full' ? 'DOSSIER COMPLET DU VÉHICULE' : mode === 'compl' ? 'COMPLÉMENT AU DOSSIER' : "ÉTAT DES LIEUX D'ENTRÉE", 'Dossier ' + v.id);
   doc.setFillColor(246, 246, 241); doc.setDrawColor(17, 17, 17); doc.setLineWidth(.6); doc.roundedRect(M, y - 2, 70, 16, 2, 2, 'FD');
   doc.setFillColor(31, 79, 163); doc.rect(M, y - 2, 7, 16, 'F'); txt('F', M + 3.5, y + 10, { s: 8, b: 1, c: [255, 255, 255], a: 'center' });
   txt(fmtPlate(v.plaque), M + 40, y + 9, { s: 20, b: 1, c: [17, 17, 17], a: 'center' });
@@ -55,6 +79,7 @@ async function buildPdf(v, photos, mode) {
   y += 24;
   var cw = (W - 2 * M) / 3;
   kv('Marque / modèle', [v.marque, v.modele].filter(Boolean).join(' '), M, cw - 3); kv('Couleur', v.couleur, M + cw, cw - 3); kv('Kilométrage', v.km ? v.km + ' km' : '', M + 2 * cw, cw - 3); y += 12;
+  if (mode === 'compl') { await complements(cl.filter(function (c) { return c.id === cid })); return finish() }
   kv('Carburant', v.fuel, M, cw - 3); kv('Clés remises', v.cles, M + cw, cw - 3); kv('Sortie prévue', v.sortiePrevue ? fmtD(v.sortiePrevue) : '', M + 2 * cw, cw - 3); y += 12;
   kv('Réceptionné par', v.recep, M, cw - 3); kv('Responsable du véhicule', v.resp, M + cw, cw - 3); kv('Rattaché à', v.rattache, M + 2 * cw, cw - 3); y += 12;
   kv('Client', v.clientNom, M, cw - 3); kv('Téléphone', v.clientTel, M + cw, cw - 3); kv('E-mail', v.clientMail, M + 2 * cw, cw - 3); y += 12;
@@ -144,24 +169,7 @@ async function buildPdf(v, photos, mode) {
     for (var qi = 0; qi < mpd.length; qi++)await pdfPages(mpd[qi]);
   }
 
-  var cl = (S.cm[v.id] || []).slice().sort(function (a, b) { return a.ts - b.ts });
-  if (mode === 'full' && cl.length) {
-    doc.addPage(); band('COMPLÉMENTS AU DOSSIER', fmtPlate(v.plaque));
-    for (var ci = 0; ci < cl.length; ci++) {
-      var cc = cl[ci], cp = photos.filter(function (p) { return p.phase === 'compl' && p.cid === cc.id }).sort(function (a, b) { return a.ts - b.ts });
-      ens(40); h2(fmtDT(cc.ts) + ' · ' + ckLabel(cc.kind) + ' · par ' + cc.by);
-      if (cc.text) { var th = txt(cc.text, M, y, { s: 10, w: W - 2 * M }); y += th + 4 }
-      var tw = (W - 2 * M - 8) / 3, th2 = tw * 0.75;
-      for (var pi = 0; pi < cp.length; pi++) {
-        var col = pi % 3; if (col === 0) ens(th2 + 12);
-        var im = await pdfImg(cp[pi]), px = M + col * (tw + 4);
-        if (im) { var rr = Math.min(tw / im.w, th2 / im.h); doc.addImage(im.d, 'JPEG', px, y, im.w * rr, im.h * rr) }
-        txt(cp[pi].label || '', px, y + th2 + 4, { s: 7, c: mut, w: tw });
-        if (col === 2 || pi === cp.length - 1) y += th2 + 10;
-      }
-      y += 4;
-    }
-  }
+  if (mode === 'full' && cl.length) { doc.addPage(); band('COMPLÉMENTS AU DOSSIER', fmtPlate(v.plaque)); await complements(cl) }
   if (mode === 'full' && (v.statut === 'sorti' || xs.length)) {
     doc.addPage(); band('FICHE DE SORTIE', fmtPlate(v.plaque));
     var w3 = (W - 2 * M) / 3;
@@ -174,26 +182,32 @@ async function buildPdf(v, photos, mode) {
   }
   var hs = v.hist || [];
   if (mode === 'full' && hs.length) { doc.addPage(); band('HISTORIQUE DU DOSSIER', fmtPlate(v.plaque)); hs.forEach(function (h) { ens(10); var hh = txt(fmtDT(h.ts) + '  ·  ' + (h.by || '') + '  ·  ' + h.a, M, y, { s: 9, w: W - 2 * M }); y += Math.max(6, hh + 2) }) }
-  var n = doc.getNumberOfPages();
-  for (var i = 1; i <= n; i++) { doc.setPage(i); txt('Plaque ' + fmtPlate(v.plaque) + ' · Dossier ' + v.id, M, 290, { s: 7.5, c: mut }); txt('Page ' + i + ' / ' + n + ' · généré le ' + fmtDT(Date.now()), W - M, 290, { s: 7.5, c: mut, a: 'right' }) }
-  return doc.output('blob');
+  return finish();
 }
-function pdfName(v, mode) { return (mode === 'entree' ? 'EDL-ENTREE_' : 'DOSSIER-COMPLET_') + normPlate(v.plaque) + '_' + (v.createdAt ? new Date(v.createdAt).toLocaleDateString('sv-SE') : todayISO()) + '.pdf' }
-export async function makePdf(mode, silent) {
-  mode = mode === 'entree' ? 'entree' : 'full';
+const LIBELLE = { entree: 'PDF d’entrée', full: 'PDF complet', compl: 'PDF du complément' };
+const SOUS_DOSSIER = { entree: 'Entrees', full: 'Dossiers', compl: 'Dossiers' };
+/* Copie dans le dossier choisi dans les réglages ; ecraser = false pour les PDF figés. Un échec n'invalide pas l'archive interne. */
+async function copier(v, nom, bytes, ecraser) {
+  try { await api.copier({ dossier: v.id, nom: nom, bytes: bytes, ecraser: ecraser }) }
+  catch (e) { toast('Copie vers le dossier choisi impossible : ' + (e && e.message || 'erreur')) }
+}
+/* mode 'compl' : cid = identifiant du complément à mettre en PDF. */
+export async function makePdf(mode, silent, cid) {
+  mode = mode === 'entree' || mode === 'compl' ? mode : 'full';
   var v = VV(); if (!v || !S.cur) return null;
   if (!window.jspdf) { toast('Le module PDF ne s’est pas chargé. Relancer l’application.'); return null }
   await flush();
   if (!silent) toast('Génération du PDF…');
   try {
-    var blob = await buildPdf(v, S.photos.slice(), mode);
-    var bytes = new Uint8Array(await blob.arrayBuffer());
-    var r = await api.archive({ name: pdfName(v, mode), sub: mode === 'entree' ? 'Entrees' : 'Dossiers', bytes: bytes });
-    save({ arch: (v.arch || []).concat([{ ts: Date.now(), mode: mode, rel: r.rel, sha: r.sha256 }]), hist: hist(v, (mode === 'entree' ? 'PDF d’entrée' : 'PDF complet') + ' archivé en lecture seule : ' + r.rel + ' (empreinte ' + r.sha256.slice(0, 12) + ')') });
+    var n = mode === 'compl' ? (S.cm[v.id] || []).slice().sort(function (a, b) { return a.ts - b.ts }).findIndex(function (c) { return c.id === cid }) + 1 : 0;
+    var blob = await buildPdf(v, S.photos.slice(), mode, cid);
+    var bytes = new Uint8Array(await blob.arrayBuffer()), nom = nomPdf(v, mode, n, Date.now());
+    var r = await api.archive({ name: nom, sub: SOUS_DOSSIER[mode], bytes: bytes });
+    await copier(v, nom, bytes, mode === 'full');
+    save({ arch: (v.arch || []).concat([{ ts: Date.now(), mode: mode, rel: r.rel, sha: r.sha256 }]), hist: hist(v, LIBELLE[mode] + ' archivé en lecture seule : ' + r.rel + ' (empreinte ' + r.sha256.slice(0, 12) + ')') });
     renderSheet(true);
-    if (silent) toast((mode === 'entree' ? 'PDF d’entrée' : 'PDF complet') + ' archivé : ' + r.rel);
+    if (silent) toast(LIBELLE[mode] + ' archivé : ' + r.rel);
     else { toast('PDF archivé en lecture seule : ' + r.rel); api.openFile(r.path) }
     return r;
   } catch (e) { toast('PDF non généré : ' + (e && (e.message || e.code) || 'erreur')); return null }
 }
-
