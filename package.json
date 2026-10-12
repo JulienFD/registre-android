@@ -1,6 +1,6 @@
 {
   "name": "registre-vehicules-android",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Registre Vehicules - application Android (Capacitor)",
   "scripts": {
