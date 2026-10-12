@@ -9,7 +9,7 @@ export function camOpen(o) {
   var el = $('#camera'); el.hidden = false; document.documentElement.style.overflow = 'hidden';
   el.innerHTML = '<div class="camtop"><div class="lab" id="camlab"></div><button class="btn" id="camsw" data-act="camswitch" hidden>Autre caméra</button><button class="btn" data-act="camimport">Importer</button><button class="btn pri" data-act="camclose">Terminer</button></div>' +
     '<video id="camvid" autoplay playsinline muted></video><div class="flash" id="camflash"></div>' +
-    '<div class="cambot">' + (o.free ? '<label class="fld" style="min-width:240px;flex:1;color:#fff"><input id="camcap" type="text" placeholder="Légende (ex. impact porte arrière gauche)" value="' + esc(o.caption || '') + '" autocomplete="off"></label>' : '<button class="btn" data-act="camskip">Passer cette vue</button>') +
+    '<div class="cambot">' + (o.free ? '<label class="fld" style="color:#fff"><input id="camcap" type="text" placeholder="Légende (ex. impact porte arrière gauche)" value="' + esc(o.caption || '') + '" autocomplete="off"></label>' : '<button class="btn" data-act="camskip">Passer cette vue</button>') +
     '<button class="shutter" data-act="camshot" aria-label="Prendre la photo"></button><div class="strip" id="camstrip"></div></div>';
   camLabel(); camStart();
 }
@@ -51,7 +51,7 @@ export async function camShot() {
   if (!CM) return;
   CM.busy = false;
   if (r) {
-    var st = $('#camstrip'); if (st && r.thumb) st.insertAdjacentHTML('beforeend', '<img alt="" src="' + esc(r.thumb) + '">');
+    var st = $('#camstrip'); if (st && r.thumb) st.insertAdjacentHTML('beforeend', '<img alt="" src="' + esc(r.thumb) + '">'), st.scrollLeft = st.scrollWidth;
     if (o.free) { var cp = $('#camcap'); if (cp) cp.value = '' }
     else { CM.idx++; if (CM.idx >= o.queue.length) { camClose(); toast('Toutes les vues demandées sont prises'); return } camLabel() }
   }
