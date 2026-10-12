@@ -6,6 +6,7 @@
 .shrow .ttl{flex:1;min-width:180px}
 .shrow .ttl div{font-size:14px;color:var(--ink2)}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
+.vlist{display:flex;flex-direction:column;gap:10px;min-width:0}
 .tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
 .tab{min-height:48px;padding:0 16px;border:0;border-bottom:4px solid transparent;background:none;font-weight:600;white-space:nowrap;color:var(--ink2)}
 .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}

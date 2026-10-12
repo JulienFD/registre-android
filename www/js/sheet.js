@@ -116,7 +116,7 @@ function tabDom0(v) {
   return '<div class="sec"><h3>Schéma des dommages</h3><p class="hint">Choisir le type de défaut, puis toucher le schéma à l’endroit exact.</p>' +
     '<div class="dmg">' + DMG.map(function (d) { return '<button class="btn sm' + (S.dmg === d[0] ? ' on' : '') + '" data-act="dmg" data-v="' + d[0] + '"><span style="width:12px;height:12px;border-radius:50%;background:' + d[2] + ';display:inline-block"></span>' + d[1] + '</button>' }).join('') + '</div>' +
     '<div class="carviews">' + carView('top') + carView('left') + carView('right') + '</div>' +
-    (marks.length ? '<div class="stack">' + rows + '</div>' : '<p class="hint">Aucun dommage marqué. Si le véhicule est sans défaut, laisser vide et cocher RAS partout ci-dessous.</p>') + '</div>' +
+    (marks.length ? '<div class="vlist">' + rows + '</div>' : '<p class="hint">Aucun dommage marqué. Si le véhicule est sans défaut, laisser vide et cocher RAS partout ci-dessous.</p>') + '</div>' +
     '<div class="sec"><h3>Contrôle point par point</h3><div>' + ch + '</div></div>';
 }
 
@@ -125,7 +125,7 @@ function mesBody() {
   var pdfs = S.photos.filter(function (p) { return p.phase === 'mesures' && p.kind === 'pdf' }).sort(by);
   var ph = S.photos.filter(function (p) { return p.phase === 'mesures' && p.kind !== 'pdf' }).sort(by);
   return '<h3 style="font-size:18px">PDF reçu du NexDiag</h3><p class="hint">Dans le mail envoyé par le NexDiag, enregistrer la pièce jointe sur le PC, puis la choisir ici. Ses pages sont ajoutées au PDF final du véhicule.</p>' +
-    (pdfs.length ? '<div class="stack">' + pdfs.map(function (p) { return '<div class="arow"><span class="grow"><b>' + esc(p.label) + '</b><br><span class="sv">Ajouté le ' + esc(fmtDT(p.ts)) + (p.by ? ' par ' + esc(p.by) : '') + '</span></span><button class="btn sm" data-act="openpdf" data-pid="' + esc(p.id) + '">Ouvrir</button><button class="btn sm bad" data-act="delphoto" data-pid="' + esc(p.id) + '">Retirer</button></div>' }).join('') + '</div>' : '<p class="sv">Aucun PDF ajouté pour l’instant.</p>') +
+    (pdfs.length ? '<div class="vlist">' + pdfs.map(function (p) { return '<div class="arow"><span class="grow"><b>' + esc(p.label) + '</b><br><span class="sv">Ajouté le ' + esc(fmtDT(p.ts)) + (p.by ? ' par ' + esc(p.by) : '') + '</span></span><button class="btn sm" data-act="openpdf" data-pid="' + esc(p.id) + '">Ouvrir</button><button class="btn sm bad" data-act="delphoto" data-pid="' + esc(p.id) + '">Retirer</button></div>' }).join('') + '</div>' : '<p class="sv">Aucun PDF ajouté pour l’instant.</p>') +
     '<div class="seg"><button class="btn pri" data-act="addpdf">Ajouter le PDF du NexDiag</button></div>' +
     '<h3 style="font-size:18px">Photos de mesure</h3>' +
     '<div class="seg"><label class="fld" style="flex:1;min-width:200px"><span>Légende</span><input id="xl-mesures" type="text" maxlength="60" placeholder="Ex. capot, zone repeinte" autocomplete="off"></label>' +
@@ -135,7 +135,7 @@ function mesBody() {
 }
 function tabMes(v) {
   var mes = v.mes || {};
-  return '<div class="sec"><h3>Analyse NexDiag</h3><div id="pg-mes" class="stack">' + mesBody() + '</div></div>' +
+  return '<div class="sec"><h3>Analyse NexDiag</h3><div id="pg-mes" class="vlist">' + mesBody() + '</div></div>' +
     '<div class="sec"><h3>Épaisseurs relevées à la main</h3><p class="hint">Facultatif, en microns. Utile quand le PDF de l’appareil n’est pas disponible.</p><div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
     PANELS.map(function (p) { return '<label class="fld"><span>' + p[1] + '</span><input type="text" inputmode="numeric" maxlength="4" data-mesk="' + p[0] + '" value="' + esc(mes[p[0]] == null ? '' : mes[p[0]]) + '" placeholder="µm"></label>' }).join('') + '</div></div>' +
     '<div class="sec"><h3>Notes d’analyse</h3>' + area('mesNotes', 'Remarques (zones repeintes, valeurs suspectes, conseils au client)', { rows: 4 }) + '</div>';
