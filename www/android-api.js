@@ -48,6 +48,29 @@
     await SH.share({ title: safe, url: u.uri, dialogTitle: 'Enregistrer ou envoyer : ' + safe });
   }
   async function readBytes(path) { var r = await FS.readFile({ path: path, directory: D }); var s = atob(r.data), u = new Uint8Array(s.length); for (var i = 0; i < s.length; i++)u[i] = s.charCodeAt(i); return u }
+  /* Sauvegarde : un seul fichier « .registre » (format : voir utils.js), écrit morceau par morceau pour ne pas charger toutes les photos en mémoire. */
+  async function listerFichiers(dir, out) {
+    var r; try { r = await FS.readdir({ path: dir, directory: D }) } catch (e) { return }
+    for (var i = 0; i < r.files.length; i++) {
+      var p = dir + '/' + r.files[i].name;
+      if (r.files[i].type === 'directory') await listerFichiers(p, out); else out.push(p);
+    }
+  }
+  /* Vérifie tout le fichier avant d'écrire quoi que ce soit ; renvoie la liste des enregistrements. */
+  async function lireIndex(f) {
+    var U = window.Utils, M = U.MAGIE_SAUVEGARDE, dec = new TextDecoder(), pos = M.length, idx = [];
+    if (f.size < M.length || dec.decode(await f.slice(0, M.length).arrayBuffer()) !== M) throw new Error('Ce fichier n’est pas une sauvegarde du registre');
+    while (pos < f.size) {
+      var tete = new Uint8Array(await f.slice(pos, pos + 400).arrayBuffer()), nl = tete.indexOf(10);
+      var h = nl < 0 ? null : U.lireEnteteSauvegarde(dec.decode(tete.subarray(0, nl)));
+      if (!h) throw new Error('Sauvegarde illisible ou corrompue');
+      pos += nl + 1;
+      if (pos + h.taille > f.size) throw new Error('Sauvegarde incomplète');
+      idx.push({ chemin: h.chemin, debut: pos, taille: h.taille });
+      pos += h.taille;
+    }
+    return idx;
+  }
   /* PIN */
   async function hashPin(pin, saltHex) {
     var k = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(pin)), 'PBKDF2', false, ['deriveBits']);
@@ -143,6 +166,36 @@
       var v = await verify(o); if (!v.ok) return v;
       if (!PINRE.test(String(n))) return { ok: false, error: 'Le code doit comporter de 4 à 8 chiffres' };
       var c = await cfg(); c.pin = await newPinRec(n); await wj('config.json', c); return { ok: true };
+    },
+    /* Exporte dossiers, photos et archives dans un fichier à envoyer vers Drive, une clé USB, etc. */
+    exportData: async function () {
+      var U = window.Utils, fichiers = [], nom = U.nomSauvegarde(new Date()), rel = 'partage/' + nom;
+      await listerFichiers('vehicules', fichiers); await listerFichiers('archives', fichiers);
+      fichiers = fichiers.filter(U.cheminSauvegardeValide);
+      await FS.writeFile({ path: rel, data: U.MAGIE_SAUVEGARDE, directory: CA, encoding: 'utf8', recursive: true });
+      for (var i = 0; i < fichiers.length; i++) {
+        var u8 = await readBytes(fichiers[i]);
+        await FS.appendFile({ path: rel, data: U.enteteSauvegarde(fichiers[i], u8.length), directory: CA, encoding: 'utf8' });
+        await FS.appendFile({ path: rel, data: b64(u8), directory: CA });
+      }
+      var u = await FS.getUri({ path: rel, directory: CA });
+      await SH.share({ title: nom, url: u.uri, dialogTitle: 'Enregistrer la sauvegarde : ' + nom });
+      return { ok: true, count: fichiers.length };
+    },
+    /* Restaure une sauvegarde : les dossiers de même identifiant sont remplacés, les autres sont conservés. */
+    importData: async function () {
+      var f = (await pick('*/*', false))[0]; if (!f) return { ok: false, annule: true };
+      var idx; try { idx = await lireIndex(f) } catch (e) { return { ok: false, error: e.message } }
+      var CSV = 'archives/REGISTRE-INTEGRITE.csv', n = 0;
+      for (var i = 0; i < idx.length; i++) {
+        var e = idx[i];
+        /* Le registre d'intégrité local est chaîné : on ne l'écrase pas. */
+        if (e.chemin === CSV) { try { await FS.stat({ path: CSV, directory: D }); continue } catch (x) { } }
+        var u8 = new Uint8Array(await f.slice(e.debut, e.debut + e.taille).arrayBuffer());
+        await FS.writeFile({ path: e.chemin, data: b64(u8), directory: D, recursive: true });
+        n++;
+      }
+      return { ok: true, count: n };
     },
     copieDossier: async function () { return (await cfg()).copie || null },
     chooseCopie: async function (pin) {

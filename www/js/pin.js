@@ -71,6 +71,8 @@ async function drawSettings() {
     '<p class="hint">Copie automatique des PDF (un sous-dossier par fiche : PDF d’entrée et compléments figés, dossier complet mis à jour après chaque modification) :</p><div class="path">' + esc(s.copie ? s.copie.nom : 'Aucun dossier choisi') + '</div>' +
     '<div class="seg"><button class="btn" data-act="chooseCopie">Choisir le dossier de copie</button>' + (s.copie ? '<button class="btn" data-act="removeCopie">Arrêter la copie</button>' : '') + '</div>' +
     '<div class="seg"><button class="btn" data-act="openarch">Ouvrir les archives</button><button class="btn" data-act="chooseArch">Changer le dossier d’archives</button><button class="btn" data-act="changepin">Changer le code PIN</button><button class="btn" data-act="majcheck">Rechercher une mise à jour</button></div>' +
+    '<p class="hint">Changer de tablette : exporter les données (dossiers, photos, archives) dans un fichier, l’enregistrer sur Drive ou le copier, puis l’importer sur la nouvelle tablette. L’import remplace les dossiers de même identifiant. Le code PIN et le dossier de copie ne sont pas transférés.</p>' +
+    '<div class="seg"><button class="btn" data-act="exportData">Exporter les données</button><button class="btn" data-act="importData">Importer les données</button></div>' +
     '<p class="sv">Version ' + esc(s.version) + '</p><div class="seg"><button class="btn pri" data-act="closemodal">Fermer</button></div>');
 }
 export async function unlock() {
@@ -104,4 +106,16 @@ export async function changePin() {
   var nw = await newPin(false); if (!nw) return;
   var r = await api.pinChange(old, nw);
   toast(r && r.ok ? 'Code PIN modifié' : (r && r.error) || 'Modification refusée');
+}
+export function exportData() {
+  toast('Préparation de la sauvegarde…');
+  api.exportData().then(function (r) { toast('Sauvegarde prête (' + r.count + ' fichiers)') }, function (e) { if (!/cancel/i.test(e && e.message)) toast('Export impossible : ' + (e && e.message || 'erreur')) });
+}
+export function importData() {
+  api.importData().then(function (r) {
+    if (r.annule) return;
+    if (!r.ok) { toast(r.error || 'Import impossible'); return }
+    toast(r.count + ' fichiers importés, rechargement…');
+    setTimeout(function () { location.reload() }, 1500);
+  }, function (e) { toast('Import impossible : ' + (e && e.message || 'erreur')) });
 }
