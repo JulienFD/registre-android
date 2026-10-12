@@ -48,7 +48,7 @@
     await SH.share({ title: safe, url: u.uri, dialogTitle: 'Enregistrer ou envoyer : ' + safe });
   }
   async function readBytes(path) { var r = await FS.readFile({ path: path, directory: D }); var s = atob(r.data), u = new Uint8Array(s.length); for (var i = 0; i < s.length; i++)u[i] = s.charCodeAt(i); return u }
-  /* Sauvegarde : un seul fichier « .registre » (format : voir utils.js), écrit morceau par morceau pour ne pas charger toutes les photos en mémoire. */
+  /* Sauvegarde : un seul fichier (.zip ou .registre, voir sauvegarde.js), écrit morceau par morceau pour ne pas charger toutes les photos en mémoire. */
   async function listerFichiers(dir, out) {
     var r; try { r = await FS.readdir({ path: dir, directory: D }) } catch (e) { return }
     for (var i = 0; i < r.files.length; i++) {
@@ -56,20 +56,41 @@
       if (r.files[i].type === 'directory') await listerFichiers(p, out); else out.push(p);
     }
   }
-  /* Vérifie tout le fichier avant d'écrire quoi que ce soit ; renvoie la liste des enregistrements. */
-  async function lireIndex(f) {
-    var U = window.Utils, M = U.MAGIE_SAUVEGARDE, dec = new TextDecoder(), pos = M.length, idx = [];
-    if (f.size < M.length || dec.decode(await f.slice(0, M.length).arrayBuffer()) !== M) throw new Error('Ce fichier n’est pas une sauvegarde du registre');
+  async function octets(f, debut, fin) { return new Uint8Array(await f.slice(debut, fin).arrayBuffer()) }
+  async function inflate(u8) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()) }
+  /* Les deux lecteurs vérifient tout le fichier avant qu'on écrive quoi que ce soit ; ils renvoient [{ chemin, debut (des données), taille, methode }]. */
+  async function indexRegistre(f) {
+    var U = window.Sauvegarde, M = U.MAGIE_SAUVEGARDE, dec = new TextDecoder(), pos = M.length, idx = [];
+    if (dec.decode(await octets(f, 0, M.length)) !== M) throw new Error('Ce fichier n’est pas une sauvegarde du registre');
     while (pos < f.size) {
-      var tete = new Uint8Array(await f.slice(pos, pos + 400).arrayBuffer()), nl = tete.indexOf(10);
+      var tete = await octets(f, pos, pos + 400), nl = tete.indexOf(10);
       var h = nl < 0 ? null : U.lireEnteteSauvegarde(dec.decode(tete.subarray(0, nl)));
       if (!h) throw new Error('Sauvegarde illisible ou corrompue');
       pos += nl + 1;
       if (pos + h.taille > f.size) throw new Error('Sauvegarde incomplète');
-      idx.push({ chemin: h.chemin, debut: pos, taille: h.taille });
+      idx.push({ chemin: h.chemin, debut: pos, taille: h.taille, methode: 0 });
       pos += h.taille;
     }
     return idx;
+  }
+  async function indexZip(f) {
+    var U = window.Sauvegarde, fin = U.zipLireFin(await octets(f, Math.max(0, f.size - 65558), f.size));
+    if (!fin || fin.offset + fin.taille > f.size) throw new Error('Archive zip illisible');
+    var tous = U.zipLireCentrale(await octets(f, fin.offset, fin.offset + fin.taille), fin.nb), idx = [];
+    for (var i = 0; i < tous.length; i++) {
+      var e = tous[i];
+      if (!U.cheminSauvegardeValide(e.chemin)) continue;
+      if (e.methode !== 0 && e.methode !== 8) throw new Error('Compression du zip non prise en charge');
+      var debut = e.debut + U.zipDebutDonnees(await octets(f, e.debut, e.debut + 30));
+      if (debut + e.taille > f.size) throw new Error('Archive zip incomplète');
+      idx.push({ chemin: e.chemin, debut: debut, taille: e.taille, methode: e.methode });
+    }
+    if (!idx.length) throw new Error('Aucun dossier reconnu dans cette archive');
+    return idx;
+  }
+  async function lireIndex(f) {
+    var t = await octets(f, 0, 4);
+    return t[0] === 0x50 && t[1] === 0x4B ? indexZip(f) : indexRegistre(f);
   }
   /* PIN */
   async function hashPin(pin, saltHex) {
@@ -167,22 +188,31 @@
       if (!PINRE.test(String(n))) return { ok: false, error: 'Le code doit comporter de 4 à 8 chiffres' };
       var c = await cfg(); c.pin = await newPinRec(n); await wj('config.json', c); return { ok: true };
     },
-    /* Exporte dossiers, photos et archives dans un fichier à envoyer vers Drive, une clé USB, etc. */
-    exportData: async function () {
-      var U = window.Utils, fichiers = [], nom = U.nomSauvegarde(new Date()), rel = 'partage/' + nom;
+    /* Exporte dossiers, photos et archives dans un fichier à envoyer vers Drive, une clé USB, etc. format : 'zip' ou 'registre'. */
+    exportData: async function (format) {
+      var U = window.Sauvegarde, zip = format === 'zip', fichiers = [], centrale = [], pos = 0, premier = true;
+      var nom = U.nomSauvegarde(new Date(), zip ? 'zip' : 'registre'), rel = 'partage/' + nom;
       await listerFichiers('vehicules', fichiers); await listerFichiers('archives', fichiers);
       fichiers = fichiers.filter(U.cheminSauvegardeValide);
-      await FS.writeFile({ path: rel, data: U.MAGIE_SAUVEGARDE, directory: CA, encoding: 'utf8', recursive: true });
+      async function ecrire(parties) {
+        var n = 0, i; for (i = 0; i < parties.length; i++) n += parties[i].length;
+        var u8 = new Uint8Array(n); n = 0; for (i = 0; i < parties.length; i++) { u8.set(parties[i], n); n += parties[i].length }
+        await FS[premier ? 'writeFile' : 'appendFile']({ path: rel, data: b64(u8), directory: CA, recursive: true });
+        premier = false; pos += u8.length;
+      }
+      var enc = new TextEncoder();
+      if (!zip) await ecrire([enc.encode(U.MAGIE_SAUVEGARDE)]);
       for (var i = 0; i < fichiers.length; i++) {
         var u8 = await readBytes(fichiers[i]);
-        await FS.appendFile({ path: rel, data: U.enteteSauvegarde(fichiers[i], u8.length), directory: CA, encoding: 'utf8' });
-        await FS.appendFile({ path: rel, data: b64(u8), directory: CA });
+        if (zip) { var crc = U.crc32(u8); centrale.push(U.zipEntreeCentrale(fichiers[i], crc, u8.length, pos)); await ecrire([U.zipEnteteLocale(fichiers[i], crc, u8.length), u8]) }
+        else await ecrire([enc.encode(U.enteteSauvegarde(fichiers[i], u8.length)), u8]);
       }
+      if (zip) { var debutCentrale = pos, taille = centrale.reduce(function (n, c) { return n + c.length }, 0); await ecrire(centrale.concat([U.zipFin(fichiers.length, taille, debutCentrale)])) }
       var u = await FS.getUri({ path: rel, directory: CA });
       await SH.share({ title: nom, url: u.uri, dialogTitle: 'Enregistrer la sauvegarde : ' + nom });
       return { ok: true, count: fichiers.length };
     },
-    /* Restaure une sauvegarde : les dossiers de même identifiant sont remplacés, les autres sont conservés. */
+    /* Restaure une sauvegarde (.zip ou .registre) : les dossiers de même identifiant sont remplacés, les autres sont conservés. */
     importData: async function () {
       var f = (await pick('*/*', false))[0]; if (!f) return { ok: false, annule: true };
       var idx; try { idx = await lireIndex(f) } catch (e) { return { ok: false, error: e.message } }
@@ -191,7 +221,8 @@
         var e = idx[i];
         /* Le registre d'intégrité local est chaîné : on ne l'écrase pas. */
         if (e.chemin === CSV) { try { await FS.stat({ path: CSV, directory: D }); continue } catch (x) { } }
-        var u8 = new Uint8Array(await f.slice(e.debut, e.debut + e.taille).arrayBuffer());
+        var u8 = await octets(f, e.debut, e.debut + e.taille);
+        if (e.methode === 8) u8 = await inflate(u8);
         await FS.writeFile({ path: e.chemin, data: b64(u8), directory: D, recursive: true });
         n++;
       }

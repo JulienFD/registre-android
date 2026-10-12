@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { cheminSauvegardeValide, enteteSauvegarde, lireEnteteSauvegarde, nomSauvegarde } = require('../www/utils.js');
+const { cheminSauvegardeValide, enteteSauvegarde, lireEnteteSauvegarde, nomSauvegarde, crc32, zipEnteteLocale, zipEntreeCentrale, zipFin, zipLireFin, zipLireCentrale, zipDebutDonnees } = require('../www/sauvegarde.js');
 
 test('cheminSauvegardeValide accepte les fichiers de dossiers, photos, compléments et archives', () => {
   for (const p of [
@@ -51,6 +51,44 @@ test('enteteSauvegarde refuse un chemin interdit', () => {
   assert.throws(() => enteteSauvegarde('config.json', 1));
 });
 
-test('nomSauvegarde porte la date du jour', () => {
-  assert.equal(nomSauvegarde(new Date('2026-10-12T09:00:00')), 'registre-sauvegarde_2026-10-12.registre');
+test('nomSauvegarde porte la date du jour et l\'extension demandée', () => {
+  const d = new Date('2026-10-12T09:00:00');
+  assert.equal(nomSauvegarde(d, 'registre'), 'registre-sauvegarde_2026-10-12.registre');
+  assert.equal(nomSauvegarde(d, 'zip'), 'registre-sauvegarde_2026-10-12.zip');
+});
+
+test('crc32 : valeur de référence', () => {
+  assert.equal(crc32(new TextEncoder().encode('123456789')), 0xCBF43926);
+  assert.equal(crc32(new Uint8Array(0)), 0);
+});
+
+function fabriquerZip(fichiers) {
+  const morceaux = [], centrale = [];
+  let pos = 0;
+  for (const f of fichiers) {
+    const crc = crc32(f.octets), tete = zipEnteteLocale(f.chemin, crc, f.octets.length);
+    centrale.push(zipEntreeCentrale(f.chemin, crc, f.octets.length, pos));
+    morceaux.push(tete, f.octets); pos += tete.length + f.octets.length;
+  }
+  const tailleCentrale = centrale.reduce((n, c) => n + c.length, 0);
+  return Buffer.concat([...morceaux, ...centrale, zipFin(fichiers.length, tailleCentrale, pos)]);
+}
+
+test('zip : on relit l\'index et les données d\'un zip fabriqué (aller-retour)', () => {
+  const a = new TextEncoder().encode('{"plaque":"AB-123-CD"}'), b = Uint8Array.from([0, 255, 1, 2, 3]);
+  const zip = fabriquerZip([{ chemin: 'vehicules/a1/dossier.json', octets: a }, { chemin: 'vehicules/a1/photos/p1.jpg', octets: b }]);
+  const fin = zipLireFin(zip);
+  assert.equal(fin.nb, 2);
+  const idx = zipLireCentrale(zip.subarray(fin.offset, fin.offset + fin.taille), fin.nb);
+  assert.deepEqual(idx.map((e) => [e.chemin, e.methode, e.taille]), [['vehicules/a1/dossier.json', 0, a.length], ['vehicules/a1/photos/p1.jpg', 0, b.length]]);
+  const e = idx[1], debut = e.debut + zipDebutDonnees(zip.subarray(e.debut, e.debut + 30));
+  assert.deepEqual([...zip.subarray(debut, debut + e.taille)], [...b]);
+});
+
+test('zip : un zip sans fin de répertoire est refusé', () => {
+  assert.equal(zipLireFin(new Uint8Array(100)), null);
+});
+
+test('zip : un zip vide a 0 entrée', () => {
+  assert.equal(zipLireFin(fabriquerZip([])).nb, 0);
 });

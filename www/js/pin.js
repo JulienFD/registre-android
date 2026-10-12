@@ -74,8 +74,9 @@ async function drawSettings() {
     '<div class="setgrid">' +
     section('Données et changement de tablette',
       '<p class="hint">Pour changer de tablette sans rien perdre : exporter les données (dossiers, photos, archives) dans un fichier, l’enregistrer sur Drive ou une clé USB, puis l’importer sur la nouvelle tablette.</p>' +
-      ligne('exportData', 'Exporter les données', 'Crée un fichier de sauvegarde à enregistrer ou envoyer') +
-      ligne('importData', 'Importer les données', 'Restaure une sauvegarde. Les dossiers de même identifiant sont remplacés') +
+      ligne('exportZip', 'Exporter en .zip', 'Photos et PDF consultables depuis un ordinateur ; réimportable dans l’application') +
+      ligne('exportRegistre', 'Exporter en .registre', 'Fichier unique réservé à l’application') +
+      ligne('importData', 'Importer les données', 'Restaure un fichier .zip ou .registre. Les dossiers de même identifiant sont remplacés') +
       '<p class="hint">Le code PIN et le dossier de copie ne sont pas transférés : les recréer sur la nouvelle tablette.</p>') +
     section('Copie automatique des PDF',
       '<p class="hint">Un sous-dossier par fiche : PDF d’entrée et compléments figés, dossier complet mis à jour après chaque modification.</p>' +
@@ -126,9 +127,9 @@ export async function changePin() {
   var r = await api.pinChange(old, nw);
   toast(r && r.ok ? 'Code PIN modifié' : (r && r.error) || 'Modification refusée');
 }
-export function exportData() {
+export function exportData(format) {
   toast('Préparation de la sauvegarde…');
-  api.exportData().then(function (r) { toast('Sauvegarde prête (' + r.count + ' fichiers)') }, function (e) { if (!/cancel/i.test(e && e.message)) toast('Export impossible : ' + (e && e.message || 'erreur')) });
+  api.exportData(format).then(function (r) { toast('Sauvegarde prête (' + r.count + ' fichiers)') }, function (e) { if (!/cancel/i.test(e && e.message)) toast('Export impossible : ' + (e && e.message || 'erreur')) });
 }
 export function importData() {
   api.importData().then(function (r) {

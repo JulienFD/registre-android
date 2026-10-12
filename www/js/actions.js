@@ -84,7 +84,8 @@ export function act(a, b) {
   if (a === 'chooseArch') { chooseArchive(); return }
   if (a === 'chooseCopie') { chooseCopie(); return }
   if (a === 'removeCopie') { removeCopie(); return }
-  if (a === 'exportData') { exportData(); return }
+  if (a === 'exportZip') { exportData('zip'); return }
+  if (a === 'exportRegistre') { exportData('registre'); return }
   if (a === 'importData') { importData(); return }
   if (a === 'changepin') { changePin(); return }
   if (a === 'majcheck') { verifierMiseAJour(true); return }

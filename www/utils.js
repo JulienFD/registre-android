@@ -228,33 +228,8 @@
     return { planifier: planifier, vider: vider };
   }
 
-  /* Sauvegarde : suite d'enregistrements « {"p":chemin,"n":taille}\n » suivis de `taille` octets. config.json (code PIN, dossier de copie) n'en fait pas partie. */
-  var MAGIE_SAUVEGARDE = 'REGISTRE-SAUVEGARDE-1\n';
-  var CHEMIN_SAUVEGARDE = /^(vehicules\/[A-Za-z0-9_-]{1,120}\/(dossier\.json|(photos\/[A-Za-z0-9_-]{1,120}\.(json|jpg|pdf))|(compl\/[A-Za-z0-9_-]{1,120}\.json))|archives\/(Entrees|Dossiers)\/\d{4}\/[A-Za-z0-9._-]{1,200}\.pdf|archives\/REGISTRE-INTEGRITE\.csv)$/;
-
-  function cheminSauvegardeValide(p) {
-    return typeof p === 'string' && CHEMIN_SAUVEGARDE.test(p);
-  }
-
-  function enteteSauvegarde(chemin, taille) {
-    if (!cheminSauvegardeValide(chemin)) throw new Error('chemin non sauvegardable : ' + chemin);
-    return JSON.stringify({ p: chemin, n: taille }) + '\n';
-  }
-
-  function lireEnteteSauvegarde(ligne) {
-    var o;
-    try { o = JSON.parse(ligne); } catch (e) { return null; }
-    if (!o || !cheminSauvegardeValide(o.p) || !Number.isInteger(o.n) || o.n < 0) return null;
-    return { chemin: o.p, taille: o.n };
-  }
-
-  function nomSauvegarde(date) {
-    return 'registre-sauvegarde_' + date.toLocaleDateString('sv-SE') + '.registre';
-  }
-
   var Utils = {
     nomPdf: nomPdf, doitCopier: doitCopier, copieDiffere: copieDiffere,
-    cheminSauvegardeValide: cheminSauvegardeValide, enteteSauvegarde: enteteSauvegarde, lireEnteteSauvegarde: lireEnteteSauvegarde, nomSauvegarde: nomSauvegarde, MAGIE_SAUVEGARDE: MAGIE_SAUVEGARDE,
     verifierVersion: verifierVersion,
     parseVersion: parseVersion, versionCode: versionCode, miseAJourDisponible: miseAJourDisponible,
     TAMPON: TAMPON, normPlate: normPlate, fmtPlate: fmtPlate, fmtD: fmtD, daysTo: daysTo, due: due, limite: limite,
