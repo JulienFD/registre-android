@@ -2,10 +2,10 @@ import { $, S, VV, api, esc, flush, fmtPlate, hist, save, snapOf, toast } from '
 import { renderSheet } from './sheet.js';
 
 var avant = null;
-export function modalShow(html) {
+export function modalShow(html, cls) {
   var m = $('#modal');
   if (m.hidden) avant = document.activeElement;
-  m.innerHTML = '<div class="mbox" role="dialog" aria-modal="true" aria-labelledby="mtitle" tabindex="-1">' + html + '</div>';
+  m.innerHTML = '<div class="mbox' + (cls ? ' ' + cls : '') + '" role="dialog" aria-modal="true" aria-labelledby="mtitle" tabindex="-1">' + html + '</div>';
   var h = m.querySelector('h2'); if (h) h.id = 'mtitle';
   m.hidden = false; m.firstChild.focus();
 }
@@ -64,14 +64,36 @@ export async function openSettings() {
   var pin = await askPin('Réglages', 'Code PIN propriétaire'); if (!pin) return;
   SETPIN = pin; drawSettings();
 }
+function ligne(act, titre, desc, cls) {
+  return '<button class="btn setrow' + (cls ? ' ' + cls : '') + '" data-act="' + act + '"><b>' + titre + '</b><span>' + desc + '</span></button>';
+}
+function section(titre, corps) { return '<section class="setsec"><h3>' + titre + '</h3>' + corps + '</section>' }
 async function drawSettings() {
   var s = await api.settings();
-  modalShow('<h2>Réglages</h2><p class="hint">Dossier des données de ce poste :</p><div class="path">' + esc(s.dataDir) + '</div><p class="hint">Dossier des archives PDF (lecture seule, avec registre d’intégrité) :</p><div class="path">' + esc(s.archiveDir) + '</div>' +
-    '<p class="hint">Pour sauvegarder sur Google Drive : choisir ici un sous-dossier du dossier « Google Drive » créé par l’application Drive pour ordinateur, puis partager ce dossier en « Lecteur » avec l’équipe. Seul le propriétaire du Drive peut alors le modifier.</p>' +
-    '<p class="hint">Copie automatique des PDF (un sous-dossier par fiche : PDF d’entrée et compléments figés, dossier complet mis à jour après chaque modification) :</p><div class="path">' + esc(s.copie ? s.copie.nom : 'Aucun dossier choisi') + '</div>' +
-    '<div class="seg"><button class="btn" data-act="chooseCopie">Choisir le dossier de copie</button>' + (s.copie ? '<button class="btn" data-act="removeCopie">Arrêter la copie</button>' : '') + '</div>' +
-    '<div class="seg"><button class="btn" data-act="openarch">Ouvrir les archives</button><button class="btn" data-act="chooseArch">Changer le dossier d’archives</button><button class="btn" data-act="changepin">Changer le code PIN</button><button class="btn" data-act="majcheck">Rechercher une mise à jour</button></div>' +
-    '<p class="sv">Version ' + esc(s.version) + '</p><div class="seg"><button class="btn pri" data-act="closemodal">Fermer</button></div>');
+  modalShow('<header class="sethead"><h2>Réglages</h2><button class="btn pri" data-act="closemodal">Fermer</button></header>' +
+    '<div class="setgrid">' +
+    section('Données et changement de tablette',
+      '<p class="hint">Pour changer de tablette sans rien perdre : exporter les données (dossiers, photos, archives) dans un fichier, l’enregistrer sur Drive ou une clé USB, puis l’importer sur la nouvelle tablette.</p>' +
+      ligne('exportZip', 'Exporter en .zip', 'Photos et PDF consultables depuis un ordinateur ; réimportable dans l’application') +
+      ligne('exportRegistre', 'Exporter en .registre', 'Fichier unique réservé à l’application') +
+      ligne('importData', 'Importer les données', 'Restaure un fichier .zip ou .registre. Les dossiers de même identifiant sont remplacés') +
+      '<p class="hint">Le code PIN et le dossier de copie ne sont pas transférés : les recréer sur la nouvelle tablette.</p>') +
+    section('Copie automatique des PDF',
+      '<p class="hint">Un sous-dossier par fiche : PDF d’entrée et compléments figés, dossier complet mis à jour après chaque modification.</p>' +
+      '<div class="path">' + esc(s.copie ? s.copie.nom : 'Aucun dossier choisi') + '</div>' +
+      ligne('chooseCopie', s.copie ? 'Changer le dossier de copie' : 'Choisir le dossier de copie', 'Par exemple un dossier Google Drive') +
+      (s.copie ? ligne('removeCopie', 'Arrêter la copie', 'Les PDF ne seront plus copiés automatiquement', 'bad') : '')) +
+    section('Archives',
+      '<p class="hint">' + esc(s.archiveDir) + '</p>' +
+      ligne('openarch', 'Ouvrir les archives', 'Registre d’intégrité des PDF archivés') +
+      ligne('chooseArch', 'Changer le dossier d’archives', 'Protégé par le code PIN')) +
+    section('Sécurité',
+      '<p class="hint">Le code PIN protège les corrections, le retrait d’éléments et ces réglages.</p>' +
+      ligne('changepin', 'Changer le code PIN', 'Demande l’ancien code puis le nouveau')) +
+    section('Application',
+      '<p class="hint">Données stockées : ' + esc(s.dataDir) + '</p>' +
+      ligne('majcheck', 'Rechercher une mise à jour', 'Version installée : ' + esc(s.version))) +
+    '</div>', 'full');
 }
 export async function unlock() {
   var v = VV(); if (!v) return;
@@ -104,4 +126,16 @@ export async function changePin() {
   var nw = await newPin(false); if (!nw) return;
   var r = await api.pinChange(old, nw);
   toast(r && r.ok ? 'Code PIN modifié' : (r && r.error) || 'Modification refusée');
+}
+export function exportData(format) {
+  toast('Préparation de la sauvegarde…');
+  api.exportData(format).then(function (r) { toast('Sauvegarde prête (' + r.count + ' fichiers)') }, function (e) { if (!/cancel/i.test(e && e.message)) toast('Export impossible : ' + (e && e.message || 'erreur')) });
+}
+export function importData() {
+  api.importData().then(function (r) {
+    if (r.annule) return;
+    if (!r.ok) { toast(r.error || 'Import impossible'); return }
+    toast(r.count + ' fichiers importés, rechargement…');
+    setTimeout(function () { location.reload() }, 1500);
+  }, function (e) { toast('Import impossible : ' + (e && e.message || 'erreur')) });
 }

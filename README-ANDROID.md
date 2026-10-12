@@ -38,6 +38,7 @@ Voir « Mises à jour automatiques » ci-dessous. En local, réinstaller par-des
 
 ## Fonctionnement sur la tablette
 - Les dossiers, photos et PDF NexDiag sont enregistrés dans la mémoire privée de l'application. **Désinstaller l'application ou vider ses données efface tout.**
+- **Changer de tablette** : Réglages > « Exporter les données » crée un fichier `.registre` (dossiers, photos, archives) à enregistrer sur Drive ou une clé USB ; sur la nouvelle tablette, Réglages > « Importer les données ». Le code PIN et le dossier de copie ne sont pas transférés.
 - Les boutons « PDF d'entrée (client) » et « PDF complet » créent le PDF (empreinte enregistrée dans le registre d'intégrité), puis ouvrent le partage Android : choisir **Drive** et le dossier d'archives.
 - Dossier Drive non modifiable : le créer sur le compte propriétaire, le partager en « Lecteur » avec l'équipe, et ne laisser que le compte de la tablette en « Éditeur ».
 - Les PDF créés automatiquement à la validation de l'entrée et de la sortie restent dans l'application : rouvrir le dossier et appuyer sur le bouton PDF pour les envoyer vers Drive.
