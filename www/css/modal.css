@@ -15,3 +15,15 @@
 .mrow2 .btn{flex:1;min-width:120px}
 .path{font:13px/1.4 ui-monospace,Consolas,monospace;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;overflow-wrap:anywhere}
 
+
+/* ---- réglages en plein écran ---- */
+#modal:has(.mbox.full){padding:0;align-items:stretch}
+.mbox.full{width:100%;height:100%;border:0;border-radius:0;padding:0;gap:0;overflow:auto;background:var(--bg)}
+.sethead{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(12px + env(safe-area-inset-top,0px)) 20px 12px;background:var(--bg);border-bottom:1px solid var(--line)}
+.setgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;padding:20px;align-items:start}
+.setsec{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:16px}
+.setsec h3{font-size:20px}
+.setrow{flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:10px 16px;text-align:left;width:100%}
+.setrow span{font-weight:400;font-size:14px;color:var(--ink2)}
+.setrow.bad span{color:var(--ink2)}
+.hint{margin:0;color:var(--ink2);font-size:14px}
