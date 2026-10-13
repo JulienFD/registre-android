@@ -86,7 +86,7 @@ function photoGrid(phase) {
     '<button class="btn" style="align-self:flex-end" data-act="extra" data-phase="' + phase + '">' + CAM + 'Prendre</button>' +
     '<button class="btn" style="align-self:flex-end" data-act="extragal" data-phase="' + phase + '">Importer</button></div>' + extraTiles(extras, phase) + '</div>';
 }
-function tabPhotos() { return '<div class="sec"><h3>Photos à l’arrivée</h3><p class="hint">Chaque photo est enregistrée dès la prise de vue, avec la plaque, la date et l’heure incrustées. Les douze vues sont obligatoires pour valider l’entrée.</p><div id="pg-entree" class="sec" style="border:0;padding:0">' + photoGrid('entree') + '</div></div>' }
+function tabPhotos() { return '<div class="sec"><h3>Photos à l’arrivée</h3><p class="hint">Chaque photo est enregistrée dès la prise de vue, avec la plaque, la date et l’heure incrustées. Les douze vues sont obligatoires pour valider l’entrée.</p><div class="seg"><button class="btn" data-act="telRecuperer">Récupérer les photos du téléphone</button></div><div id="pg-entree" class="sec" style="border:0;padding:0">' + photoGrid('entree') + '</div></div>' }
 
 function carView(k) {
   var vw = VIEWS[k], v = VV(), marks = (v.marks || []);
@@ -132,7 +132,8 @@ function mesBody() {
     '<h3 style="font-size:18px">Photos de mesure</h3>' +
     '<div class="seg"><label class="fld" style="flex:1;min-width:200px"><span>Légende</span><input id="xl-mesures" type="text" maxlength="60" placeholder="Ex. capot, zone repeinte" autocomplete="off"></label>' +
     '<button class="btn" style="align-self:flex-end" data-act="extra" data-phase="mesures">' + CAM + 'Prendre</button>' +
-    '<button class="btn" style="align-self:flex-end" data-act="extragal" data-phase="mesures">Importer</button></div>' +
+    '<button class="btn" style="align-self:flex-end" data-act="extragal" data-phase="mesures">Importer</button>' +
+    '<button class="btn" style="align-self:flex-end" data-act="telRecuperer">Photos du téléphone</button></div>' +
     (ph.length ? '<div class="tiles">' + ph.map(function (p) { return '<button class="tile has" data-act="view" data-phase="mesures" data-pid="' + esc(p.id) + '"><img class="ph" loading="lazy" alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><span class="lb">' + esc(p.label || 'Mesure') + '</span></button>' }).join('') + '</div>' : '');
 }
 function tabMes(v) {
@@ -173,7 +174,7 @@ function tabSortie(v) {
     '<div class="sec"><h3>Remise du véhicule</h3><div class="remind"><b>Date et heure de sortie</b><span id="clk">' + esc(fmtDT(Date.now())) + '</span> : enregistrées automatiquement à la validation de la sortie.</div><div class="grid2">' + fld('remisPar', 'Qui a rendu le véhicule', { req: 1, list: 'people', ph: 'Nom de la personne de l’atelier' }) + fld('remisA', 'Nom de la personne qui vient le récupérer', { req: 1, ph: 'Nom et prénom' }) + '</div>' +
     area('notesSortie', 'Notes de sortie (réserves, remarques du client)', { rows: 3 }) +
     '<label class="tgl"><input type="checkbox" id="f-of" data-f="opsFaites"' + (v.opsFaites ? ' checked' : '') + '> Tout ce qui figure dans « À réaliser » a été fait ou signalé</label></div>' +
-    '<div class="sec"><h3>Photos à la sortie</h3><p class="hint">Même série que l’entrée, la photo d’entrée apparaît en vignette pour comparer.</p><div id="pg-sortie" class="sec" style="border:0;padding:0">' + photoGrid('sortie') + '</div></div>' +
+    '<div class="sec"><h3>Photos à la sortie</h3><p class="hint">Même série que l’entrée, la photo d’entrée apparaît en vignette pour comparer.</p><div class="seg"><button class="btn" data-act="telRecuperer">Récupérer les photos du téléphone</button></div><div id="pg-sortie" class="sec" style="border:0;padding:0">' + photoGrid('sortie') + '</div></div>' +
     sigBlock('sigSortie', 'Signature à la remise', v.remisA);
 }
 export function exitReady(v) {

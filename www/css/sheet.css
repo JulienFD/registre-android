@@ -133,3 +133,7 @@
 .nx-p.nx-sel .nx-dot{stroke:var(--ink);stroke-width:5}
 .nx-p:focus-visible .nx-dot{stroke:var(--accent);stroke-width:5}
 .nx-det summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--ink2)}
+
+/* Photos du téléphone : choix des compléments (case à cocher sur la vignette). */
+.tile.tel{position:relative;cursor:pointer}
+.tile.tel input{position:absolute;top:8px;left:8px;width:28px;height:28px;accent-color:var(--accent)}

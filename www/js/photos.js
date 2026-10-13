@@ -34,13 +34,15 @@ export async function commitPhoto(src, item, opt) {
   var pid = item.phase + '_' + item.slot; S.busy[pid] = 1; refreshPhotos();
   try {
     var who = whoFor(v, item.phase);
-    var jp = await makeJpeg(src, v, item.phase, who, opt);
+    /* opt.octets : photo déjà compressée et tamponnée sur le téléphone, enregistrée telle quelle (ni second bandeau ni seconde compression). */
+    var jp = opt.octets ? { bytes: opt.octets } : await makeJpeg(src, v, item.phase, who, opt);
     var old = S.photos.filter(function (x) { return x.id === pid })[0];
     var rev = old ? (old.rev || 1) + 1 : 1, file = rev > 1 ? pid + '_r' + rev : pid;
     await api.savePhoto(id, file, jp.bytes);
-    var rec = { phase: item.phase, slot: item.slot, label: item.label, ts: Date.now(), by: who, file: file, rev: rev };
+    var rec = { phase: item.phase, slot: item.slot, label: item.label, ts: opt.ts || Date.now(), by: opt.par || who, file: file, rev: rev };
     if (old) rec.prev = (old.prev || []).concat([{ file: old.file || old.id, ts: old.ts, by: old.by }]);
     if (opt.imported) { rec.imported = true; rec.origName = opt.name || '' }
+    if (opt.relais) rec.relais = opt.relais;
     await api.write('vehicules/' + id + '/photos/' + pid, rec);
     rec.id = pid; rec.vid = id;
     if (old) S.photos.splice(S.photos.indexOf(old), 1);

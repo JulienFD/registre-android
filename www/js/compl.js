@@ -1,6 +1,7 @@
 import { CAM, CK, ckLabel } from './constants.js';
 import { S, V, api, esc, fmtDT, hist, lastWho, save, srcOf, toast } from './core.js';
 import { makePdf } from './pdf.js';
+import { reclamerTel } from './photos-tel.js';
 import { renderSheet } from './sheet.js';
 
 export function getCd() { return S.cdraft || (S.cdraft = { by: lastWho(), kind: 'lavage', text: '', pics: [] }) }
@@ -10,7 +11,7 @@ export function tabCompl() {
     '<div class="grid2"><label class="fld"><span>Qui ajoute <em>*</em></span><input id="cd-by" type="text" list="people" maxlength="40" value="' + esc(d.by) + '" autocomplete="off"></label>' +
     '<label class="fld"><span>Nature</span><select id="cd-kind">' + CK.map(function (c) { return '<option value="' + c[0] + '"' + (d.kind === c[0] ? ' selected' : '') + '>' + c[1] + '</option>' }).join('') + '</select></label></div>' +
     '<label class="fld"><span>Ce qui est constaté <em>*</em></span><textarea id="cd-text" rows="3" maxlength="1000" placeholder="Ex. rayure sur l’aile arrière droite visible après lavage">' + esc(d.text) + '</textarea></label>' +
-    '<div class="pickrow"><button class="btn" data-act="cdshoot">' + CAM + 'Prendre des photos</button><button class="btn" data-act="cdimport">Importer des images</button></div>' +
+    '<div class="pickrow"><button class="btn" data-act="cdshoot">' + CAM + 'Prendre des photos</button><button class="btn" data-act="cdimport">Importer des images</button><button class="btn" data-act="telChoisir">Photos du téléphone</button></div>' +
     (d.pics.length ? '<div class="tiles">' + d.pics.map(function (p) { return '<div class="tile has"><img class="ph" alt="" src="' + esc(p.url) + '"><span class="lb">' + esc(p.label) + '</span></div>' }).join('') + '</div>' : '') +
     '<div class="seg"><button class="btn pri" data-act="cdsave">Enregistrer le complément</button>' + (d.pics.length ? '<button class="btn" data-act="cdclear">Retirer ces photos</button>' : '') + '</div></div>' +
     '<div class="sec"><h3>Compléments enregistrés (' + list.length + ')</h3>' + (list.length ? '<div class="tl">' + list.map(function (c) {
@@ -26,11 +27,14 @@ export async function cdSave() {
   if (!d.text.trim() && !d.pics.length) { toast('Décrire ce qui est constaté ou ajouter une photo'); return }
   var cid = 'c' + Date.now(), id = S.cur, ids = [];
   try {
+    d.pics = await reclamerTel(d.pics, v);
+    if (!d.text.trim() && !d.pics.length) { toast('Aucune photo du téléphone disponible : ajouter un texte ou d’autres photos'); return }
     for (var i = 0; i < d.pics.length; i++) {
       var p = d.pics[i], slot = cid + '_' + (i + 1), pid = 'compl_' + slot;
       await api.savePhoto(id, pid, p.bytes);
       var rec = { phase: 'compl', slot: slot, cid: cid, label: p.label, ts: p.ts, by: d.by.trim(), file: pid, rev: 1 };
       if (p.imported) { rec.imported = true; rec.origName = p.origName }
+      if (p.relais) rec.relais = p.relais;
       await api.write('vehicules/' + id + '/photos/' + pid, rec);
       rec.id = pid; rec.vid = id; S.photos.push(rec); ids.push(pid);
     }
