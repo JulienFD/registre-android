@@ -56,6 +56,26 @@
       return { statut: rep.status, json: json };
     }
 
+    // Corps binaire (photo) : 200 donne les octets, 404 donne null, les autres statuts sont des erreurs codées.
+    async function requeteOctets(chemin) {
+      var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+      var minuteur = setTimeout(function () { if (ctl) ctl.abort(); }, delai);
+      var init = { method: 'GET', cache: 'no-store', headers: { Authorization: autorisation } };
+      if (ctl) init.signal = ctl.signal;
+      var rep, donnees;
+      try {
+        rep = await appeler(base + chemin, init);
+        if (rep.status === 200) donnees = new Uint8Array(await rep.arrayBuffer());
+      } catch (e) {
+        throw erreur('reseau', 'Relais injoignable');
+      } finally {
+        clearTimeout(minuteur);
+      }
+      if (rep.status === 200) return donnees;
+      verifier({ statut: rep.status }, [404]);
+      return null;
+    }
+
     // Statuts d'échec communs ; les statuts « métier » (404, 409) sont laissés à l'appelant.
     function verifier(r, tolere) {
       if (r.statut === 200 || (tolere && tolere.indexOf(r.statut) > -1)) return r;
@@ -80,6 +100,24 @@
         if (r.statut === 409) return { conflit: true, dossier: r.json.dossier || null };
         if (r.statut === 404) return { introuvable: true };
         return { ok: true, deja: !!r.json.deja };
+      },
+      photos: async function (plaque) {
+        var r = verifier(await requete('GET', '/api/photos?plaque=' + encodeURIComponent(normPlaque(plaque))));
+        return r.json.photos || [];
+      },
+      photo: function (plaque, sha) {
+        return requeteOctets('/api/photos?plaque=' + encodeURIComponent(normPlaque(plaque)) + '&sha=' + encodeURIComponent(sha));
+      },
+      reclamerPhoto: async function (sha, plaque, dossier) {
+        var r = verifier(await requete('POST', '/api/photos', { sha256: sha, plaque: normPlaque(plaque), dossier: dossier }), [404, 409]);
+        if (r.statut === 409) return { conflit: true, dossier: r.json.dossier || null };
+        if (r.statut === 404) return { introuvable: true };
+        return { ok: true, deja: !!r.json.deja };
+      },
+      libererPhoto: async function (sha, dossier) {
+        var q = new URLSearchParams({ sha256: sha, dossier: dossier }).toString();
+        verifier(await requete('DELETE', '/api/photos?' + q));
+        return { ok: true };
       },
       liberer: async function (cle, dossier) {
         var q = new URLSearchParams({ cle: cle, dossier: dossier }).toString();

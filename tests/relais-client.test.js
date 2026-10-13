@@ -11,7 +11,10 @@ function faux(...reponses) {
     appels.push({ url, init });
     const r = reponses.shift();
     if (r instanceof Error) throw r;
-    return { status: r.statut, text: async () => (typeof r.corps === 'string' ? r.corps : JSON.stringify(r.corps)) };
+    return {
+      status: r.statut, text: async () => (typeof r.corps === 'string' ? r.corps : JSON.stringify(r.corps)),
+      arrayBuffer: async () => (r.octets || new Uint8Array(0)).buffer,
+    };
   };
   f.appels = appels;
   return f;
@@ -154,4 +157,48 @@ test('une erreur inconnue donne un message générique, jamais le texte brut', (
   assert.match(messageErreur(new Error('boom interne')), /impossible|erreur/i);
   assert.equal(messageErreur(new Error('boom interne')).includes('boom'), false);
   assert.match(messageErreur(null), /impossible|erreur/i);
+});
+
+// --- photos du téléphone ---
+
+const SHA = 'a'.repeat(64);
+
+test('photos liste les photos d\'une plaque, plaque normalisée', async () => {
+  const f = faux(ok({ ok: true, plaque: 'AB123CD', photos: [{ sha256: SHA, phase: 'entree', slot: 'av' }] }));
+  const r = await creerClient(CONF, f).photos('ab-123-cd');
+  assert.deepEqual(r, [{ sha256: SHA, phase: 'entree', slot: 'av' }]);
+  assert.equal(f.appels[0].url, 'https://relais.example.test/api/photos?plaque=AB123CD');
+  assert.equal(f.appels[0].init.method, 'GET');
+});
+
+test('photo renvoie les octets, ou null si elle est introuvable', async () => {
+  const f = faux({ statut: 200, octets: Uint8Array.from([0xFF, 0xD8, 1, 2, 0xFF, 0xD9]) }, { statut: 404, corps: { ok: false } });
+  const c = creerClient(CONF, f);
+  const o = await c.photo('ab-123-cd', SHA);
+  assert.deepEqual(Array.from(o), [0xFF, 0xD8, 1, 2, 0xFF, 0xD9]);
+  assert.equal(f.appels[0].url, 'https://relais.example.test/api/photos?plaque=AB123CD&sha=' + SHA);
+  assert.equal(await c.photo('ab-123-cd', SHA), null);
+});
+
+test('photo signale les refus par des erreurs codées', async () => {
+  await attendreErreur(creerClient(CONF, faux({ statut: 401, corps: {} })).photo('AB123CD', SHA), 'auth');
+  await attendreErreur(creerClient(CONF, faux({ statut: 403, corps: {} })).photo('AB123CD', SHA), 'interdit');
+  await attendreErreur(creerClient(CONF, faux(new Error('réseau'))).photo('AB123CD', SHA), 'reseau');
+});
+
+test('reclamerPhoto envoie l\'empreinte, la plaque et le dossier', async () => {
+  const f = faux(ok({ ok: true, sha256: SHA, dossier: 'D1', deja: false }), { statut: 409, corps: { ok: false, dossier: 'D9' } }, { statut: 404, corps: { ok: false } });
+  const c = creerClient(CONF, f);
+  assert.deepEqual(await c.reclamerPhoto(SHA, 'ab-123-cd', 'D1'), { ok: true, deja: false });
+  assert.deepEqual(JSON.parse(f.appels[0].init.body), { sha256: SHA, plaque: 'AB123CD', dossier: 'D1' });
+  assert.equal(f.appels[0].init.method, 'POST');
+  assert.deepEqual(await c.reclamerPhoto(SHA, 'AB123CD', 'D1'), { conflit: true, dossier: 'D9' });
+  assert.deepEqual(await c.reclamerPhoto(SHA, 'AB123CD', 'D1'), { introuvable: true });
+});
+
+test('libererPhoto utilise DELETE avec l\'empreinte et le dossier', async () => {
+  const f = faux(ok({ ok: true, sha256: SHA, libre: true }));
+  assert.deepEqual(await creerClient(CONF, f).libererPhoto(SHA, 'D1'), { ok: true });
+  assert.equal(f.appels[0].init.method, 'DELETE');
+  assert.equal(f.appels[0].url, 'https://relais.example.test/api/photos?sha256=' + SHA + '&dossier=D1');
 });
