@@ -64,6 +64,7 @@ test('l\'API des photos exige les identifiants de démonstration', async () => {
     assert.equal(sans.status, 401);
     const faux = await fetch(base + '/api/photos?plaque=AB123CD&vue=etat', { headers: { Authorization: 'Basic ' + Buffer.from('demo:mauvais').toString('base64') } });
     assert.equal(faux.status, 401);
+    assert.equal(faux.headers.get('www-authenticate'), null);
     const ok = await fetch(base + '/api/photos?plaque=AB123CD&vue=etat', { headers: { Authorization: AUTH } });
     assert.equal(ok.status, 200);
     assert.deepEqual((await ok.json()).photos, []);

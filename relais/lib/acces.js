@@ -8,9 +8,9 @@ const reponse = (statut, json, entetes) => ({ statut, json, entetes: Object.assi
 // Renvoie { compte } ou { refus }.
 function authentifier(o) {
   const compte = verifierBasic(o.authorization, o.comptes);
-  if (!compte) {
-    return { refus: reponse(401, { ok: false, erreur: 'authentification requise' }, { 'WWW-Authenticate': 'Basic realm="relais", charset="UTF-8"' }) };
-  }
+  // Pas d'en-tête WWW-Authenticate : face à un défi Basic, le navigateur ouvrirait sa propre fenêtre d'identifiants par-dessus
+  // celle de la PWA (« on me les redemande »). Ces routes sont appelées par du JavaScript, qui envoie Authorization lui-même.
+  if (!compte) return { refus: reponse(401, { ok: false, erreur: 'authentification requise' }) };
   return { compte };
 }
 

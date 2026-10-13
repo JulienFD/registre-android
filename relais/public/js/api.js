@@ -19,7 +19,7 @@ function entete(a) {
 // Renvoie { statut, json } ; statut 0 = relais injoignable.
 export async function etat(auth, plaque) {
   try {
-    const r = await fetch('/api/photos?plaque=' + encodeURIComponent(plaque) + '&vue=etat', { headers: { Authorization: entete(auth) }, cache: 'no-store' });
+    const r = await fetch('/api/photos?plaque=' + encodeURIComponent(plaque) + '&vue=etat', { headers: { Authorization: entete(auth) }, cache: 'no-store', credentials: 'omit' });
     return { statut: r.status, json: await r.json().catch(() => null) };
   } catch { return { statut: 0, json: null }; }
 }
@@ -27,7 +27,7 @@ export async function etat(auth, plaque) {
 // Envoie une photo ; renvoie le statut HTTP (0 = réseau).
 export async function envoyer(auth, meta, blob) {
   try {
-    const r = await fetch(urlEnvoi(meta), { method: 'PUT', headers: { Authorization: entete(auth), 'Content-Type': 'image/jpeg' }, body: blob, cache: 'no-store' });
+    const r = await fetch(urlEnvoi(meta), { method: 'PUT', headers: { Authorization: entete(auth), 'Content-Type': 'image/jpeg' }, body: blob, cache: 'no-store', credentials: 'omit' });
     return r.status;
   } catch { return 0; }
 }

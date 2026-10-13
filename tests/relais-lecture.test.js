@@ -60,7 +60,8 @@ test('sans authentification valide, la lecture est refusée', async () => {
   for (const authorization of [undefined, basic('tablette', 'faux')]) {
     const r = await appel(s, { authorization, requete: { plaque: 'ZZ999ZZ' } });
     assert.equal(r.statut, 401);
-    assert.match(r.entetes['WWW-Authenticate'], /^Basic /);
+    // Jamais de défi Basic : le navigateur ouvrirait sa propre fenêtre d'identifiants par-dessus notre formulaire.
+    assert.equal(r.entetes['WWW-Authenticate'], undefined);
   }
 });
 

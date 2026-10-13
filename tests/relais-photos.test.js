@@ -84,6 +84,7 @@ test('un envoi sans authentification valide est refusé sans rien écrire', asyn
   for (const authorization of [undefined, basic('julien', 'faux')]) {
     const r = await televerser(s, {}, undefined, { authorization });
     assert.equal(r.statut, 401);
+    assert.equal(r.entetes['WWW-Authenticate'], undefined);
   }
   assert.equal(s.blobs.size, 0);
 });

@@ -29,7 +29,9 @@ function ecranConnexion(message) {
   h('label', {}, h('span', {}, 'Compte'), compte),
   h('label', {}, h('span', {}, 'Mot de passe'), mdp),
   erreur,
-  h('button', { class: 'btn pri', type: 'submit' }, 'Se connecter'));
+  h('button', { class: 'btn pri', type: 'submit' }, 'Se connecter'),
+  // Uniquement sur la machine de développement (npm run dev) : le compte réel n'y existe pas.
+  ['localhost', '127.0.0.1'].indexOf(location.hostname) > -1 ? h('p', { class: 'hint' }, 'Développement local : compte « demo », mot de passe « demo-demo-demo ».') : null);
   monter(racine, form);
 }
 
