@@ -30,12 +30,18 @@ Réponses : `200` après stockage durable seulement, `401` authentification, `40
 
 ## Vérification
 
-```
-curl -i -X POST https://<projet>.vercel.app/api/nexptg -u julien:<mot-de-passe> \
-  -H 'Content-Type: application/json' --data @tests/fixtures/nexptg-vide.json
-```
+Depuis la racine du dépôt. `-u julien` seul fait demander le mot de passe, qui n'entre pas dans l'historique du shell.
 
-Doit répondre `200 {"ok":true,"rapports":0,"historique":0}`. Sans `-u`, ou avec un mauvais mot de passe : `401`.
+1. **Authentification** (n'écrit rien) :
+   ```
+   curl -i -X POST https://<projet>.vercel.app/api/nexptg -u julien \
+     -H 'Content-Type: application/json' --data @tests/fixtures/nexptg-vide.json
+   ```
+   Attendu : `200 {"ok":true,"rapports":0,"historique":0}`. Sans `-u`, ou avec un mauvais mot de passe : `401`.
+
+2. **Stockage** (écrit le rapport de test, plaque `AB123CD`) : la même commande avec `tests/fixtures/nexptg-rapport-champ.json`.
+   Attendu : `200 {"ok":true,"rapports":1,"historique":0}` et un fichier `rapports/AB123CD/<sha256>.json` dans le store.
+   Rejouer la commande doit répondre `200` de nouveau, sans créer de second fichier.
 
 ## Limites connues
 
