@@ -106,3 +106,30 @@
 .nx-champs{display:flex;flex-wrap:wrap;gap:6px 18px}
 .nx-k{color:var(--ink2);font-style:normal}
 .nx-legende{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+
+/* Schémas NexPTG : silhouettes indicatives, éléments teintés par leur pire mesure, points colorés par interprétation. */
+.nx-sch{display:flex;flex-direction:column;gap:8px}
+.nx-sch-tete{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:flex-start;justify-content:space-between}
+.nx-sch-tete h4{margin:0;font-size:18px}
+.nx-indic{font:500 12px/1 var(--font-body);letter-spacing:0;text-transform:none;color:var(--ink2);margin-left:6px}
+.nx-lecture{min-height:44px;min-width:200px;text-align:right;margin-left:auto}
+.nx-svg{width:100%;height:auto;max-height:640px;touch-action:manipulation}
+.nx-caisse{fill:var(--surface2);stroke:var(--ink2);stroke-width:2}
+.nx-vitre{fill:var(--bg);stroke:var(--ink2);stroke-width:1.5}
+.nx-roue{fill:var(--ink2)}
+.nx-el{fill-opacity:.3;stroke-width:2;stroke-opacity:.9}
+.nx-t-vide{fill:transparent;stroke:var(--ink2);stroke-dasharray:6 4}
+.nx-t-0{fill:var(--accent);stroke:var(--accent)}
+.nx-t-1{fill:var(--ok);stroke:var(--ok)}
+.nx-t-2{fill:var(--warn);stroke:var(--warn)}
+.nx-t-3,.nx-t-4,.nx-t-5{fill:var(--bad);stroke:var(--bad)}
+.nx-p{cursor:pointer;outline:none}
+.nx-hit{fill:transparent}
+.nx-dot{fill:var(--surface);stroke:currentColor;stroke-width:3}
+.nx-p text{fill:var(--ink);font:700 15px var(--font-body);pointer-events:none}
+.nx-p.nx-i-4 .nx-dot,.nx-p.nx-i-5 .nx-dot{fill:var(--bad);stroke:var(--bad)}
+.nx-p.nx-i-4 text,.nx-p.nx-i-5 text{fill:var(--surface)}
+.nx-p.nx-i-ignore .nx-dot{stroke-dasharray:4 3}
+.nx-p.nx-sel .nx-dot{stroke:var(--ink);stroke-width:5}
+.nx-p:focus-visible .nx-dot{stroke:var(--accent);stroke-width:5}
+.nx-det summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--ink2)}

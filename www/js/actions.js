@@ -5,7 +5,7 @@ import { COLS } from './constants.js';
 import { $, S, TAMPON, VV, entryErrors, api, flush, hist, save, srcOf, toast } from './core.js';
 import { autoCreate, closeSheet, createDossier, lockConfirm, newEntry, openDossier, undoSig, validateEntry } from './dossier.js';
 import { installerMiseAJour, verifierMiseAJour } from './maj.js';
-import { nxChoisir, nxCommencer, nxRecharger, nxTermine, nxTermineOk, nxVerifier } from './nexptg-tab.js';
+import { nxChoisir, nxCommencer, nxPoint, nxRecharger, nxTermine, nxTermineOk, nxVerifier } from './nexptg-tab.js';
 import { makePdf } from './pdf.js';
 import { canShoot, commitPhoto, complSink, delPhoto, doImport, handlePdf, startQueue } from './photos.js';
 import { changePin, chooseArchive, chooseCopie, clearRelais, closeSettings, exportData, importData, modalHide, openSettings, relock, removeCopie, saveRelais, testRelais, unlock } from './pin.js';
@@ -87,6 +87,7 @@ export function act(a, b) {
   if (a === 'removeCopie') { removeCopie(); return }
   if (a === 'nxCommencer') { nxCommencer(); return }
   if (a === 'nxVerifier') { nxVerifier(); return }
+  if (a === 'nxPoint') { nxPoint(d); return }
   if (a === 'nxRecharger') { nxRecharger(); return }
   if (a === 'nxChoisir') { nxChoisir(d.sha); return }
   if (a === 'nxTermine') { nxTermine(); return }

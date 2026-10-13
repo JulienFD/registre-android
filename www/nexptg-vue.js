@@ -3,24 +3,14 @@
   'use strict';
 
   var N = typeof module !== 'undefined' && module.exports ? require('./nexptg.js') : root.Nexptg;
+  var S = typeof module !== 'undefined' && module.exports ? require('./nexptg-schema.js') : root.NexptgSchema;
 
   var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ESC[c]; }); }
   function dt(ts) { return new Date(ts).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
   function heure(ts) { return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
 
-  // Sens des codes déduit de rapports réels (0 : jusqu'à 16 µm, 1 : 70–123, 2 : 193–258, 3 : 413, 5 : 1609) ; le code 4 n'a jamais été observé.
-  var CATEGORIES = {
-    '0': 'Couche trop mince', '1': 'Peinture d\'origine', '2': 'Seconde couche',
-    '3': 'Couche mince de mastic', '4': 'Couche épaisse de mastic', '5': 'Couche épaisse de mastic', '-2': 'Mesure ignorée',
-  };
-
-  function categorie(code) {
-    var c = String(code);
-    if (c === '-2') return { classe: 'nx-i-ignore', libelle: CATEGORIES['-2'] };
-    if (CATEGORIES[c]) return { classe: 'nx-i-' + c, libelle: CATEGORIES[c] };
-    return { classe: 'nx-i-na', libelle: 'Non classée' };
-  }
+  var categorie = N.categorie;
 
   function bouton(act, texte, classe, attrs) {
     return '<button class="btn' + (classe ? ' ' + classe : '') + '" data-act="' + act + '"' + (attrs || '') + '>' + texte + '</button>';
@@ -76,7 +66,7 @@
     }).join('');
   }
 
-  function tableZone(zone) {
+  function tableZone(zone, sansTitre) {
     var lignes = zone.elements.map(function (e) {
       var s = N.statsElement(e.valeurs);
       var sol = (e.valeurs.filter(function (v) { return v.valeur !== null && v.materiau; })[0] || {}).materiau || '–';
@@ -84,7 +74,7 @@
       return '<tr><th scope="row">' + esc(N.libelleElement(e.type)) + '</th><td>' + esc(sol) + '</td><td>' + nb(s.min) + '</td><td>' + nb(s.max) + '</td><td>' + nb(s.moyenne) +
         '</td><td class="nx-rel">' + chips(e.valeurs) + '</td></tr>';
     }).join('');
-    return '<h4>' + esc(N.libelleZone(zone.zone)) + '</h4><div class="nx-scroll"><table class="nx-tab"><thead><tr><th></th><th>Sol</th><th>Min</th><th>Max</th><th>Moy.</th><th>Relevés</th></tr></thead><tbody>' + lignes + '</tbody></table></div>';
+    return (sansTitre ? '' : '<h4>' + esc(N.libelleZone(zone.zone)) + '</h4>') + '<div class="nx-scroll"><table class="nx-tab"><thead><tr><th></th><th>Sol</th><th>Min</th><th>Max</th><th>Moy.</th><th>Relevés</th></tr></thead><tbody>' + lignes + '</tbody></table></div>';
   }
 
   function vuePneus(pneus) {
@@ -98,16 +88,66 @@
     }).join('') + '</div></div>';
   }
 
-  function vueRecu(etat) {
+  /* ---- schémas indicatifs ---- */
+
+  function lecturePoint(vue, point) {
+    var aide = '<span class="hint">Toucher un point pour lire sa valeur.</span>';
+    if (!point || point.v !== vue.id) return aide;
+    var el = vue.elements.filter(function (e) { return e.type === point.t; })[0];
+    var p = el && el.points.filter(function (x) { return x.n === point.p; })[0];
+    if (!p) return aide;
+    return '<b>' + esc(el.libelle) + '</b> · point ' + esc(p.n) + '<br>' +
+      (p.ignore
+        ? '<span class="nx-pt nx-i-ignore">–</span> Mesure ignorée'
+        : '<span class="nx-pt ' + p.classe + '">' + esc(p.valeur) + ' µm</span> ' + esc(p.materiau) + ' · ' + esc(p.libelle) + (p.ts ? ' · ' + esc(heure(p.ts)) : ''));
+  }
+
+  function svgVue(vue, point) {
+    var formes = vue.elements.map(function (e) {
+      var f = e.forme;
+      return '<rect class="nx-el ' + e.tint + '" x="' + f.x + '" y="' + f.y + '" width="' + f.w + '" height="' + f.h + '" rx="' + f.rx + '"><title>' + esc(e.libelle) + '</title></rect>';
+    }).join('');
+    var points = vue.elements.map(function (e) {
+      return e.points.map(function (p) {
+        var sel = point && point.v === vue.id && point.t === e.type && point.p === p.n;
+        var etiquette = e.libelle + ', point ' + p.n + ' : ' + (p.ignore ? 'mesure ignorée' : p.valeur + ' µm, ' + p.libelle);
+        return '<g class="nx-p ' + p.classe + (sel ? ' nx-sel' : '') + '" data-act="nxPoint" data-vue="' + esc(vue.id) + '" data-t="' + esc(e.type) + '" data-p="' + esc(p.n) + '"' +
+          ' role="button" tabindex="0" aria-label="' + esc(etiquette) + '" aria-pressed="' + (sel ? 'true' : 'false') + '">' +
+          '<circle class="nx-hit" cx="' + p.x + '" cy="' + p.y + '" r="' + (vue.rayon + 7) + '"/><circle class="nx-dot" cx="' + p.x + '" cy="' + p.y + '" r="' + vue.rayon + '"/>' +
+          '<text x="' + p.x + '" y="' + p.y + '" dy=".35em" text-anchor="middle">' + esc(p.n) + '</text></g>';
+      }).join('');
+    }).join('');
+    return '<svg class="nx-svg" viewBox="0 0 ' + vue.w + ' ' + vue.h + '" role="group" aria-label="Schéma indicatif : ' + esc(vue.titre) + '">' + vue.decor + formes + points + '</svg>';
+  }
+
+  function carteSchema(vue, zone, ctx) {
+    return '<div class="nx-sch"><div class="nx-sch-tete"><h4>' + esc(vue.titre) + ' <span class="nx-indic">schéma indicatif</span></h4>' +
+      '<div class="nx-lecture" aria-live="polite">' + lecturePoint(vue, ctx.point) + '</div></div>' +
+      svgVue(vue, ctx.point) +
+      (zone ? '<details class="nx-det"><summary>Tableau des relevés</summary>' + tableZone(zone, true) + '</details>' : '') + '</div>';
+  }
+
+  function sectionMesures(titre, section, rapport, schema, ctx) {
+    var cartes = schema[section].map(function (vue) {
+      var zone = rapport[section].filter(function (z) { return z.elements.length && z.zone === vue.zone; })[0];
+      return carteSchema(vue, zone, ctx);
+    }).join('');
+    // Éléments que le schéma ne connaît pas : ils restent visibles en tableau, rien n'est masqué.
+    var hors = schema.horsSchema.filter(function (h) { return h.section === section; });
+    var tableaux = rapport[section].map(function (z) {
+      var types = hors.filter(function (h) { return h.zone === z.zone; }).map(function (h) { return h.type; });
+      var els = z.elements.filter(function (e) { return types.indexOf(e.type) > -1; });
+      return els.length ? '<h4>Sans schéma : ' + esc(N.libelleZone(z.zone)) + '</h4>' + tableZone({ zone: z.zone, elements: els }, true) : '';
+    }).join('');
+    return cartes || tableaux ? '<div class="sec"><h3>' + titre + '</h3>' + cartes + tableaux + '</div>' : '';
+  }
+
+  function vueRecu(etat, ctx) {
     var d = etat.derniere, r = N.lireRapport(d.brut);
-    var v = r.vehicule;
+    var v = r.vehicule, schema = S.construire(r);
     var champs = [['Marque', v.marque], ['Modèle', v.modele], ['Carrosserie', v.carrosserie], ['Énergie', v.energie], ['Millésime', v.millesime], ['VIN', v.vin]]
       .concat(r.champs.map(function (c) { return [c.titre, c.texte]; }))
       .filter(function (x) { return x[1]; });
-    var sections = function (titre, zones) {
-      var utiles = zones.filter(function (z) { return z.elements.length; });
-      return utiles.length ? '<div class="sec"><h3>' + titre + '</h3>' + utiles.map(tableZone).join('') + '</div>' : '';
-    };
     return '<div class="sec"><h3>Rapport NexPTG reçu</h3>' +
       '<p><b>' + esc(r.nom || 'Sans nom') + '</b> · technicien ' + esc(d.par) + ' · reçu le ' + esc(dt(d.recu)) +
       (etat.nbVersions > 1 ? ' · <span class="sv">' + esc(etat.nbVersions) + ' versions reçues, la dernière est affichée</span>' : '') + '</p>' +
@@ -115,7 +155,7 @@
       (d.avertissements && d.avertissements.length ? '<p class="nx-err">À vérifier : ' + esc(d.avertissements.join(', ')) + '.</p>' : '') +
       (r.commentaire ? '<div class="remind"><b>Commentaire NexPTG</b>' + esc(r.commentaire) + '</div>' : '') +
       '<p class="hint nx-legende">' + [1, 2, 3, 5, 0, -2].map(function (c) { var k = categorie(c); return '<span class="nx-pt ' + k.classe + '">&nbsp;</span> ' + esc(k.libelle); }).join(' · ') + '</p></div>' +
-      sections('Mesures externes', r.externe) + sections('Mesures internes', r.interne) + vuePneus(r.pneus);
+      sectionMesures('Mesures externes', 'externe', r, schema, ctx) + sectionMesures('Mesures internes', 'interne', r, schema, ctx) + vuePneus(r.pneus);
   }
 
   function vueTermine(etat) {
@@ -128,7 +168,7 @@
   function vue(etat, ctx, dossier) {
     dossier = dossier || {};
     var corps;
-    if (etat.statut === 'recu') return vueRecu(etat);
+    if (etat.statut === 'recu') return vueRecu(etat, ctx);
     if (etat.statut === 'termine') corps = vueTermine(etat);
     else if (etat.statut === 'mesures') corps = vueMesures(etat, ctx, dossier);
     else corps = vueAttente(ctx);

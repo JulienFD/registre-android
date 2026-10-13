@@ -115,3 +115,65 @@ test('categorie associe un code d\'interprétation à un libellé et une classe'
   assert.equal(categorie(-2).libelle, 'Mesure ignorée');
   assert.equal(categorie(99).libelle, 'Non classée');
 });
+
+// --- schémas SVG interactifs ---
+
+const sansTable = (h) => h.replace(/<details[\s\S]*?<\/details>/g, '');
+
+test('le rapport reçu affiche des schémas indicatifs avec des points numérotés touchables', () => {
+  const h = rendre({}, [env()]);
+  assert.match(h, /<svg class="nx-svg"/);
+  assert.match(h, /Schéma indicatif/);
+  assert.ok((h.match(/data-act="nxPoint"/g) || []).length > 40);
+  assert.match(h, /data-t="LEFT_FRONT_FENDER" data-p="1"/);
+  assert.match(h, /role="button"/);
+  assert.match(h, /aria-label="Aile avant gauche, point 1 : 193 µm, Seconde couche"/);
+});
+
+test('les schémas ne portent jamais data-view : ce sont ceux des dommages qui posent des marques', () => {
+  assert.equal(/data-view=/.test(rendre({}, [env()])), false);
+});
+
+test('aucun point n\'est sélectionné par défaut : une consigne est affichée', () => {
+  const h = rendre({}, [env()]);
+  assert.match(h, /Toucher un point/);
+  assert.equal(/nx-sel/.test(h), false);
+});
+
+test('le point sélectionné est mis en évidence et sa mesure est lue en haut à droite du schéma', () => {
+  const h = rendre({}, [env()], { point: { v: 'ext-left', t: 'LEFT_FRONT_FENDER', p: 3 } });
+  assert.equal((h.match(/nx-sel/g) || []).length, 1);
+  const lecture = h.match(/<div class="nx-lecture"[\s\S]*?<\/div>/)[0];
+  assert.match(lecture, /Aile avant gauche/);
+  assert.match(lecture, /point 3/);
+  assert.match(lecture, /258/);
+  assert.match(lecture, /Seconde couche/);
+});
+
+test('une mesure ignorée sélectionnée est annoncée comme telle, sans valeur', () => {
+  const partiel = fixture('nexptg-rapport-mesures-ignorees.json').data.reports[0];
+  const h = rendre({}, [env({ brut: partiel })], { point: { v: 'ext-left', t: 'LEFT_FRONT_FENDER', p: 1 } });
+  const lecture = h.match(/<div class="nx-lecture"[\s\S]*?<\/div>/)[0];
+  assert.match(lecture, /Mesure ignorée/);
+});
+
+test('un point sélectionné inconnu est ignoré sans erreur', () => {
+  const h = rendre({}, [env()], { point: { v: 'ext-left', t: 'NOPE', p: 99 } });
+  assert.match(h, /Toucher un point/);
+});
+
+test('le tableau détaillé reste disponible, replié, sous chaque schéma', () => {
+  const h = rendre({}, [env()]);
+  assert.match(h, /<details class="nx-det"><summary>Tableau des relevés<\/summary>/);
+  assert.match(h, /Aile avant gauche/);
+  assert.match(sansTable(h), /<svg/);
+});
+
+test('un élément inconnu de NexPTG reste visible dans un tableau « sans schéma »', () => {
+  const b = JSON.parse(JSON.stringify(brutComplet));
+  b.data[0].data.push({ type: 'LEFT_<MIRROR>', values: [{ value: '90', interpretation: 1, type: 'Fe', timestamp: 1, position: 1 }] });
+  const h = rendre({}, [env({ brut: b })]);
+  assert.match(h, /Sans schéma/);
+  assert.match(h, /LEFT_&lt;MIRROR&gt;/);
+  assert.equal(h.includes('LEFT_<MIRROR>'), false);
+});

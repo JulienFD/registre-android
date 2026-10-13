@@ -5,7 +5,7 @@ import { refreshChrome, renderSheet } from './sheet.js';
 /* Onglet NexPTG : le rendu vient de nexptg-vue.js (pur) ; ici, le relais, l'enregistrement et les actions. */
 var N = window.Nexptg, R = window.Relais, W = window.NexptgVue;
 var INTERVALLE = 8000;
-var E = { configure: true, tech: null, techErr: '', erreur: '', derniere: 0, candidats: [], occupe: false, timer: null, chargement: false };
+var E = { configure: true, tech: null, techErr: '', erreur: '', derniere: 0, candidats: [], occupe: false, timer: null, chargement: false, point: null };
 
 function versions(v) { return S.nm[v.id] || [] }
 function etat(v) { return N.etatNexptg(v, versions(v)) }
@@ -13,7 +13,7 @@ function etat(v) { return N.etatNexptg(v, versions(v)) }
 export function nexptgHtml(v) {
   return W.vue(etat(v), {
     plaque: fmtPlate(v.plaque), dossierId: v.id, relaisConfigure: E.configure, techniciens: E.tech, erreurTechniciens: E.techErr,
-    erreur: E.erreur, derniereVerif: E.derniere, candidats: E.candidats, occupe: E.occupe,
+    erreur: E.erreur, derniereVerif: E.derniere, candidats: E.candidats, occupe: E.occupe, point: E.point,
   }, v);
 }
 
@@ -124,6 +124,16 @@ export async function nxCommencer() {
   await save({ nexptg: { qui: qui, debutAt: Date.now() }, hist: hist(v, 'Mesures NexPTG commencées (technicien ' + qui + ')') });
   renderSheet(true);
   nexptgMonter(VV());
+}
+
+/* Toucher un point affiche sa mesure en haut à droite du schéma ; le toucher à nouveau la masque. */
+export function nxPoint(d) {
+  var p = { v: d.vue, t: d.t, p: Number(d.p) };
+  var meme = E.point && E.point.v === p.v && E.point.t === p.t && E.point.p === p.p;
+  E.point = meme ? null : p;
+  rendre();
+  var g = document.querySelector('g[data-vue="' + p.v + '"][data-t="' + p.t + '"][data-p="' + p.p + '"]');
+  if (g) g.focus({ preventScroll: true });
 }
 
 export function nxVerifier() { E.derniere = 0; verifier() }

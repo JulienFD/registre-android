@@ -17,6 +17,14 @@ document.addEventListener('click', function (e) {
   }
   act(b.dataset.act, b);
 });
+/* Les points des schémas NexPTG sont des éléments SVG : Entrée et Espace doivent les activer comme un bouton. */
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  var b = e.target.closest && e.target.closest('g[role="button"][data-act]');
+  if (!b) return;
+  e.preventDefault();
+  act(b.dataset.act, b);
+});
 /* Brouillon : créé dès qu'on quitte un champ, ou quand l'app passe en arrière-plan. */
 document.addEventListener('change', function (e) { if (S.draft && e.target && e.target.dataset && e.target.dataset.f) autoCreate() });
 document.addEventListener('change', function (e) { var t = e.target; if (t.dataset && t.dataset.filter) { S.f[t.dataset.filter] = t.value; renderMain() } });
