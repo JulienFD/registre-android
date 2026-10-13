@@ -117,7 +117,7 @@
           '<text x="' + p.x + '" y="' + p.y + '" dy=".35em" text-anchor="middle">' + esc(p.n) + '</text></g>';
       }).join('');
     }).join('');
-    return '<svg class="nx-svg" viewBox="0 0 ' + vue.w + ' ' + vue.h + '" role="group" aria-label="Schéma indicatif : ' + esc(vue.titre) + '">' + vue.decor + formes + points + '</svg>';
+    return '<svg class="nx-svg" viewBox="' + vue.cadre.x + ' ' + vue.cadre.y + ' ' + vue.cadre.w + ' ' + vue.cadre.h + '" role="group" aria-label="Schéma indicatif : ' + esc(vue.titre) + '">' + vue.decor + formes + points + '</svg>';
   }
 
   function carteSchema(vue, zone, ctx) {

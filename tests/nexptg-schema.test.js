@@ -100,3 +100,45 @@ test('une section vide du rapport ne produit aucune vue', () => {
   assert.deepEqual(s.interne, []);
   assert.deepEqual(s.horsSchema, []);
 });
+
+test('chaque vue expose ses silhouettes en primitives (polygones, cercles, rectangles) dans le cadre du schéma', () => {
+  const s = complet();
+  for (const v of s.externe.concat(s.interne)) {
+    assert.ok(v.decorFormes.length > 0, v.id);
+    for (const f of v.decorFormes) {
+      assert.ok(['caisse', 'vitre', 'roue'].includes(f.role), v.id + ' rôle ' + f.role);
+      const pts = f.t === 'poly' ? f.pts : f.t === 'cercle' ? [[f.cx - f.r, f.cy - f.r], [f.cx + f.r, f.cy + f.r]] : [[f.x, f.y], [f.x + f.w, f.y + f.h]];
+      for (const [x, y] of pts) assert.ok(x >= -0.5 && y >= -0.5 && x <= v.w + 0.5 && y <= v.h + 0.5, v.id + ' primitive hors cadre');
+    }
+  }
+});
+
+test('le SVG des silhouettes est dérivé des primitives, sans transformation', () => {
+  const v = vueDe(complet(), 'ext-left');
+  assert.match(v.decor, /<polygon class="nx-caisse"/);
+  assert.match(v.decor, /<circle class="nx-roue"/);
+  assert.equal(v.decor.includes('transform='), false);
+});
+
+test('la vue de droite a ses silhouettes en miroir de celles de gauche', () => {
+  const s = complet();
+  const g = vueDe(s, 'ext-left').decorFormes.filter((f) => f.role === 'roue');
+  const d = vueDe(s, 'ext-right').decorFormes.filter((f) => f.role === 'roue');
+  assert.equal(Math.round(d[0].cx), Math.round(vueDe(s, 'ext-left').w - g[0].cx));
+});
+
+test('le cadre de chaque vue entoure tout ce qui est dessiné, et recadre le vide', () => {
+  const s = complet();
+  for (const v of s.externe.concat(s.interne)) {
+    const c = v.cadre;
+    assert.ok(c.x >= 0 && c.y >= 0 && c.x + c.w <= v.w + 0.5 && c.y + c.h <= v.h + 0.5, v.id + ' cadre hors schéma');
+    const dedans = (x, y, r) => x - r >= c.x - 0.5 && x + r <= c.x + c.w + 0.5 && y - r >= c.y - 0.5 && y + r <= c.y + c.h + 0.5;
+    for (const f of v.decorFormes) {
+      if (f.t === 'poly') f.pts.forEach(([x, y]) => assert.ok(dedans(x, y, 0), v.id + ' silhouette hors cadre'));
+      else if (f.t === 'cercle') assert.ok(dedans(f.cx, f.cy, f.r), v.id + ' roue hors cadre');
+    }
+    for (const e of v.elements) for (const p of e.points) assert.ok(dedans(p.x, p.y, v.rayon), v.id + ' point ' + p.n + ' hors cadre');
+  }
+  const g = vueDe(s, 'ext-left');
+  assert.ok(g.cadre.h < g.h * 0.85, 'la vue latérale n\'est pas recadrée');
+});
