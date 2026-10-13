@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { creerCompte, lireComptes, lireLecteurs } = require('../relais/lib/comptes.js');
 const { recevoirNexptg } = require('../relais/lib/recevoir.js');
-const { servirRapports } = require('../relais/lib/lecture.js');
+const { servirRapports, servirTechniciens } = require('../relais/lib/lecture.js');
 
 const fixture = (nom) => fs.readFileSync(path.join(__dirname, 'fixtures', nom), 'utf8');
 const basic = (nom, mdp) => 'Basic ' + Buffer.from(nom + ':' + mdp).toString('base64');
@@ -261,4 +261,36 @@ test('si le stockage échoue, la réponse est une erreur sans détail interne', 
   try { r = await appel(s, { requete: { plaque: 'ZZ999ZZ' } }); } finally { console.error = erreur; }
   assert.equal(r.statut, 500);
   assert.deepEqual(r.json, { ok: false, erreur: 'stockage indisponible' });
+});
+
+// --- techniciens : la liste des comptes d'envoi, tirée de la configuration du relais ---
+
+const techniciens = (extra) => servirTechniciens(Object.assign({
+  methode: 'GET', authorization: basic('tablette', MDP_TAB), comptes: COMPTES, lecteurs: LECTEURS,
+}, extra));
+
+test('la liste des techniciens contient les comptes d\'envoi, sans les comptes lecteurs', async () => {
+  const r = await techniciens();
+  assert.equal(r.statut, 200);
+  assert.deepEqual(r.json, { ok: true, techniciens: ['julien', 'lea'] });
+});
+
+test('la liste des techniciens ne révèle ni sel ni empreinte', async () => {
+  const texte = JSON.stringify((await techniciens()).json);
+  assert.equal(/[0-9a-f]{32}/.test(texte), false);
+});
+
+test('la liste des techniciens est réservée aux comptes lecteurs', async () => {
+  assert.equal((await techniciens({ authorization: undefined })).statut, 401);
+  assert.equal((await techniciens({ authorization: basic('tablette', 'faux') })).statut, 401);
+  const r = await techniciens({ authorization: basic('julien', MDP_TECH) });
+  assert.equal(r.statut, 403);
+  assert.equal(JSON.stringify(r.json).includes('lea'), false);
+});
+
+test('la liste des techniciens n\'accepte que GET et n\'est jamais mise en cache', async () => {
+  const r = await techniciens({ methode: 'POST' });
+  assert.equal(r.statut, 405);
+  assert.equal(r.entetes.Allow, 'GET');
+  assert.equal((await techniciens()).entetes['Cache-Control'], 'private, no-store');
 });

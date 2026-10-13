@@ -10,6 +10,7 @@ Ce dossier est déployé séparément de l'app Android (Root Directory `relais` 
 | `POST /api/nexptg` | Reçoit la synchronisation NexPTG (Basic auth), la lit, la stocke dans un Blob **privé** |
 
 | `GET /api/rapports?plaque=AB123CD[&par=julien]` | Liste les rapports d'une plaque (dernière version reçue, versions précédentes listées). `plaque=_sans-plaque` : rapports sans immatriculation |
+| `GET /api/techniciens` | Liste les techniciens : les comptes de `RELAIS_COMPTES` sauf les lecteurs (jamais d'empreinte). Sert au sélecteur « Qui mesure ? » |
 | `POST /api/rapports` | Réclame un rapport pour un dossier : `{"cle", "plaque", "dossier"}` ; `409` s'il l'est déjà par un autre dossier |
 | `DELETE /api/rapports?cle=…&dossier=…` | Libère une réclamation (seul le dossier qui l'a faite) |
 

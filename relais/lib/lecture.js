@@ -80,15 +80,32 @@ async function liberer(o) {
   return reponse(200, { ok: true, cle, libre: true });
 }
 
+// Authentifie, puis n'admet que les comptes lecteurs. Renvoie { compte } ou { refus } (réponse à émettre).
+function controlerAcces(o) {
+  const compte = verifierBasic(o.authorization, o.comptes);
+  if (!compte) {
+    return { refus: reponse(401, { ok: false, erreur: 'authentification requise' }, { 'WWW-Authenticate': 'Basic realm="relais", charset="UTF-8"' }) };
+  }
+  if (!o.lecteurs.has(compte)) return { refus: reponse(403, { ok: false, erreur: 'accès en lecture non autorisé' }) };
+  return { compte };
+}
+
+// Comptes d'envoi (techniciens) : ceux de la configuration, sans les comptes lecteurs. Jamais d'empreinte.
+async function servirTechniciens(o) {
+  if (o.methode !== 'GET') return reponse(405, { ok: false, erreur: 'méthode non autorisée' }, { Allow: 'GET' });
+  const acces = controlerAcces(o);
+  if (acces.refus) return acces.refus;
+  const noms = [...o.comptes.keys()].filter((nom) => !o.lecteurs.has(nom)).sort();
+  return reponse(200, { ok: true, techniciens: noms });
+}
+
 async function servirRapports(o) {
   if (!['GET', 'POST', 'DELETE'].includes(o.methode)) {
     return reponse(405, { ok: false, erreur: 'méthode non autorisée' }, { Allow: 'GET, POST, DELETE' });
   }
-  const compte = verifierBasic(o.authorization, o.comptes);
-  if (!compte) {
-    return reponse(401, { ok: false, erreur: 'authentification requise' }, { 'WWW-Authenticate': 'Basic realm="relais", charset="UTF-8"' });
-  }
-  if (!o.lecteurs.has(compte)) return reponse(403, { ok: false, erreur: 'accès en lecture non autorisé' });
+  const acces = controlerAcces(o);
+  if (acces.refus) return acces.refus;
+  const compte = acces.compte;
 
   const corps = typeof o.corps === 'string' ? o.corps : '';
   if (Buffer.byteLength(corps) > CORPS_MAX) return reponse(413, { ok: false, erreur: 'corps trop volumineux' });
@@ -105,4 +122,4 @@ async function servirRapports(o) {
   }
 }
 
-module.exports = { servirRapports };
+module.exports = { servirRapports, servirTechniciens };
