@@ -2,6 +2,7 @@
 // Lecture des rapports par la tablette : lister par plaque, réclamer pour un dossier, libérer.
 const crypto = require('node:crypto');
 const { verifierBasic } = require('./comptes.js');
+const { entetesCors, preflight } = require('./cors.js');
 
 const PLAQUE = /^(?:[A-Z0-9]{2,15}|_sans-plaque)$/;
 const DOSSIER = /^[A-Za-z0-9_-]{1,64}$/;
@@ -91,7 +92,7 @@ function controlerAcces(o) {
 }
 
 // Comptes d'envoi (techniciens) : ceux de la configuration, sans les comptes lecteurs. Jamais d'empreinte.
-async function servirTechniciens(o) {
+async function techniciens(o) {
   if (o.methode !== 'GET') return reponse(405, { ok: false, erreur: 'méthode non autorisée' }, { Allow: 'GET' });
   const acces = controlerAcces(o);
   if (acces.refus) return acces.refus;
@@ -99,7 +100,7 @@ async function servirTechniciens(o) {
   return reponse(200, { ok: true, techniciens: noms });
 }
 
-async function servirRapports(o) {
+async function rapports(o) {
   if (!['GET', 'POST', 'DELETE'].includes(o.methode)) {
     return reponse(405, { ok: false, erreur: 'méthode non autorisée' }, { Allow: 'GET, POST, DELETE' });
   }
@@ -122,4 +123,13 @@ async function servirRapports(o) {
   }
 }
 
-module.exports = { servirRapports, servirTechniciens };
+// Pré-requête CORS traitée avant tout contrôle ; les autres réponses portent l'autorisation CORS, erreurs comprises.
+function avecCors(fn) {
+  return async function (o) {
+    if (o.methode === 'OPTIONS') return preflight(o.origine, o.origines);
+    const r = await fn(o);
+    return Object.assign({}, r, { entetes: Object.assign({}, r.entetes, entetesCors(o.origine, o.origines)) });
+  };
+}
+
+module.exports = { servirRapports: avecCors(rapports), servirTechniciens: avecCors(techniciens) };

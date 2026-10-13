@@ -6,6 +6,7 @@ const path = require('node:path');
 const { creerCompte, lireComptes, lireLecteurs } = require('../relais/lib/comptes.js');
 const { recevoirNexptg } = require('../relais/lib/recevoir.js');
 const { servirRapports, servirTechniciens } = require('../relais/lib/lecture.js');
+const { lireOrigines } = require('../relais/lib/cors.js');
 
 const fixture = (nom) => fs.readFileSync(path.join(__dirname, 'fixtures', nom), 'utf8');
 const basic = (nom, mdp) => 'Basic ' + Buffer.from(nom + ':' + mdp).toString('base64');
@@ -293,4 +294,64 @@ test('la liste des techniciens n\'accepte que GET et n\'est jamais mise en cache
   assert.equal(r.statut, 405);
   assert.equal(r.entetes.Allow, 'GET');
   assert.equal((await techniciens()).entetes['Cache-Control'], 'private, no-store');
+});
+
+// --- CORS : l'application tourne sur https://localhost, donc ses appels vers le relais sont cross-origine ---
+
+const ORIGINE_APP = 'https://localhost';
+
+test('lireOrigines : l\'origine de l\'application est autorisée par défaut, jamais de joker', () => {
+  assert.deepEqual([...lireOrigines(undefined)], [ORIGINE_APP]);
+  assert.deepEqual([...lireOrigines('')], [ORIGINE_APP]);
+  assert.deepEqual([...lireOrigines('https://app.example.test, https://b.example.test:8443')].sort(), ['https://app.example.test', 'https://b.example.test:8443']);
+  assert.deepEqual([...lireOrigines('*, javascript:x, https://ok.test/chemin')], [ORIGINE_APP]);
+});
+
+test('la pré-requête d\'une origine autorisée est acceptée sans authentification ni accès au stockage', async () => {
+  const s = stockageMemoire();
+  s.lister = async () => { throw new Error('ne doit pas être appelé'); };
+  for (const fn of [servirRapports, servirTechniciens]) {
+    const r = await fn({ methode: 'OPTIONS', authorization: undefined, origine: ORIGINE_APP, requete: {}, comptes: COMPTES, lecteurs: LECTEURS, stockage: s });
+    assert.equal(r.statut, 204);
+    assert.equal(r.entetes['Access-Control-Allow-Origin'], ORIGINE_APP);
+    assert.match(r.entetes['Access-Control-Allow-Methods'], /GET/);
+    assert.match(r.entetes['Access-Control-Allow-Methods'], /DELETE/);
+    assert.match(r.entetes['Access-Control-Allow-Headers'], /Authorization/);
+    assert.match(r.entetes['Access-Control-Allow-Headers'], /Content-Type/);
+    assert.ok(Number(r.entetes['Access-Control-Max-Age']) > 0);
+    assert.equal(r.entetes.Vary, 'Origin');
+  }
+});
+
+test('la pré-requête d\'une origine inconnue n\'obtient aucune autorisation', async () => {
+  const r = await servirTechniciens({ methode: 'OPTIONS', origine: 'https://autre.example.test', comptes: COMPTES, lecteurs: LECTEURS });
+  assert.equal(r.statut, 204);
+  assert.equal(r.entetes['Access-Control-Allow-Origin'], undefined);
+});
+
+test('les réponses, erreurs comprises, portent l\'autorisation CORS pour que l\'application puisse les lire', async () => {
+  const s = stockageMemoire();
+  const cas = [
+    [{ authorization: basic('tablette', MDP_TAB), requete: { plaque: 'ZZ999ZZ' } }, 200],
+    [{ authorization: undefined, requete: { plaque: 'ZZ999ZZ' } }, 401],
+    [{ authorization: basic('julien', MDP_TECH), requete: { plaque: 'ZZ999ZZ' } }, 403],
+    [{ authorization: basic('tablette', MDP_TAB), requete: { plaque: '../x' } }, 400],
+  ];
+  for (const [extra, statut] of cas) {
+    const r = await appel(s, Object.assign({ origine: ORIGINE_APP }, extra));
+    assert.equal(r.statut, statut);
+    assert.equal(r.entetes['Access-Control-Allow-Origin'], ORIGINE_APP, String(statut));
+    assert.equal(r.entetes.Vary, 'Origin');
+  }
+  const t = await techniciens({ origine: ORIGINE_APP });
+  assert.equal(t.entetes['Access-Control-Allow-Origin'], ORIGINE_APP);
+});
+
+test('sans en-tête Origin ou depuis une origine inconnue, aucune autorisation CORS n\'est ajoutée', async () => {
+  const s = stockageMemoire();
+  const sans = await appel(s, { requete: { plaque: 'ZZ999ZZ' } });
+  assert.equal(sans.entetes['Access-Control-Allow-Origin'], undefined);
+  const inconnue = await appel(s, { origine: 'https://pirate.example.test', requete: { plaque: 'ZZ999ZZ' } });
+  assert.equal(inconnue.statut, 200);
+  assert.equal(inconnue.entetes['Access-Control-Allow-Origin'], undefined);
 });

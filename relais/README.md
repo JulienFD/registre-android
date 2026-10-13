@@ -17,6 +17,8 @@ Ce dossier est déployé séparément de l'app Android (Root Directory `relais` 
 La lecture est réservée aux comptes listés dans `RELAIS_LECTEURS` ; les comptes des techniciens (NexPTG) ne peuvent qu'envoyer.
 Toutes les réponses de lecture portent `Cache-Control: private, no-store`.
 
+**CORS** : l'application (origine `https://localhost`) appelle `/api/techniciens` et `/api/rapports` depuis sa WebView ; le relais répond donc aux pré-requêtes `OPTIONS` et ajoute `Access-Control-Allow-Origin` pour les origines autorisées, erreurs comprises. Liste blanche, jamais de joker : `https://localhost` par défaut, étendue par la variable facultative `RELAIS_ORIGINES` (origines séparées par une virgule). `/api/nexptg` n'en a pas besoin : NexPTG est une application native.
+
 Stockage (JSON, nom de fichier = SHA-256 du contenu, donc un renvoi identique est sans effet et une version modifiée s'ajoute) :
 
 - `rapports/<PLAQUE>/<sha256>.json` : un rapport, avec son contenu d'origine intact (`brut`), le compte, la date de réception et les avertissements. `_sans-plaque` quand le champ « Immatriculation » est absent ou inexploitable.
