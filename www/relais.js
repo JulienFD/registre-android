@@ -89,7 +89,22 @@
     };
   }
 
-  var Relais = { creerClient: creerClient, normPlaque: normPlaque };
+  var MESSAGES = {
+    auth: 'Identifiants refusés par le relais',
+    interdit: 'Ce compte n\'est pas autorisé à lire les rapports',
+    reseau: 'Relais injoignable : vérifier la connexion de la tablette',
+    serveur: 'Le relais est indisponible, réessayer plus tard',
+    reponse: 'Réponse du relais inattendue',
+    requete: 'Requête refusée par le relais',
+  };
+
+  // Message à montrer à l'utilisateur : jamais le texte brut d'une erreur technique.
+  function messageErreur(e) {
+    if (e && e.code === 'config') return e.message;
+    return (e && MESSAGES[e.code]) || 'Opération impossible avec le relais';
+  }
+
+  var Relais = { creerClient: creerClient, normPlaque: normPlaque, messageErreur: messageErreur };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = Relais;
   else root.Relais = Relais;

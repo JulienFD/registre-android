@@ -229,6 +229,14 @@
       return { ok: true, count: n };
     },
     copieDossier: async function () { return (await cfg()).copie || null },
+    /* Configuration du relais NexPTG : lue par l'app sans PIN, modifiée seulement avec le PIN. Jamais sauvegardée (config.json). */
+    relaisConf: async function () { return (await cfg()).relais || null },
+    relaisSet: async function (pin, conf) {
+      var v = await verify(pin); if (!v.ok) return v;
+      var c = await cfg();
+      if (conf) c.relais = { url: String(conf.url || ''), compte: String(conf.compte || ''), motDePasse: String(conf.motDePasse || '') }; else delete c.relais;
+      await wj('config.json', c); return { ok: true };
+    },
     chooseCopie: async function (pin) {
       var v = await verify(pin); if (!v.ok) return v;
       var r; try { r = await DP.choisir() } catch (e) { return { ok: false, annule: true } }

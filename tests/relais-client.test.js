@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { creerClient } = require('../www/relais.js');
+const { creerClient, messageErreur } = require('../www/relais.js');
 
 const CONF = { url: 'https://relais.example.test', compte: 'tablette', motDePasse: 'secret-é-à-tester' };
 
@@ -126,4 +126,32 @@ test('un relais qui ne répond pas à temps est une erreur réseau', async () =>
   });
   const c = creerClient({ ...CONF, delaiMs: 20 }, bloque);
   await attendreErreur(c.techniciens(), 'reseau');
+});
+
+test('chaque code d\'erreur a un message clair en français, sans détail technique', () => {
+  const attendus = {
+    auth: /identifiants/i,
+    interdit: /autoris/i,
+    reseau: /injoignable|connexion/i,
+    serveur: /indisponible/i,
+    reponse: /illisible|inattendue/i,
+    requete: /refus/i,
+  };
+  for (const [code, motif] of Object.entries(attendus)) {
+    const e = new Error('détail interne'); e.code = code;
+    const m = messageErreur(e);
+    assert.match(m, motif, code);
+    assert.equal(m.includes('détail interne'), false, code);
+  }
+});
+
+test('une erreur de configuration garde son message, déjà rédigé pour l\'utilisateur', () => {
+  const e = new Error('Adresse du relais invalide : HTTPS obligatoire'); e.code = 'config';
+  assert.equal(messageErreur(e), 'Adresse du relais invalide : HTTPS obligatoire');
+});
+
+test('une erreur inconnue donne un message générique, jamais le texte brut', () => {
+  assert.match(messageErreur(new Error('boom interne')), /impossible|erreur/i);
+  assert.equal(messageErreur(new Error('boom interne')).includes('boom'), false);
+  assert.match(messageErreur(null), /impossible|erreur/i);
 });

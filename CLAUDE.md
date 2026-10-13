@@ -40,9 +40,15 @@ App Android (Capacitor 8, WebView) de suivi des véhicules en atelier, pour une 
 
 - `www/` est le code source de l'app (versionné). Les copies générées par `cap sync` (`android/app/src/main/assets/public/`) ne s'éditent jamais à la main.
 - Changer le code natif seulement si un plugin Capacitor ne suffit pas ; une modification du manifeste passe par `patch-android.js` pour rester reproductible.
-- Aucun secret dans l'app : les données restent locales. Seul appel réseau : la recherche de mise à jour (API GitHub `releases/latest`, HTTPS, dépôt public) ; tout nouvel appel reste en HTTPS uniquement.
+- Aucun secret dans le code ni dans le dépôt. Les données restent locales, sauf deux appels réseau, tous deux en HTTPS uniquement : la recherche de mise à jour (API GitHub `releases/latest`, dépôt public) et le relais NexPTG (`www/relais.js`). Adresse, compte et mot de passe du relais se saisissent dans les Réglages et vivent dans `config.json` (mémoire privée, jamais sauvegardé). Tout nouvel appel reste en HTTPS ; l'origine doit aussi figurer dans la CSP de `index.html`.
 - Mise à jour automatique : `maj.js` + plugin natif `UpdaterPlugin`. L'APK de release doit toujours être signé avec la même clé (secrets GitHub `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`), sinon Android refuse la mise à jour par-dessus. Ne jamais perdre ni régénérer cette clé.
 - `./gradlew lintDebug` doit passer sans nouvel avertissement.
+
+## Relais NexPTG (`relais/`)
+
+- Fonctions Vercel (`relais/api/`) et logique testée (`relais/lib/`), déployées séparément de l'APK : voir `relais/README.md`. Le code reste **sans secret** ; comptes et jetons sont des variables d'environnement Vercel.
+- Les rapports NexPTG sont conservés bruts (jamais modifiés) ; les corrections du Registre s'ajoutent en surcouche. Identité d'un rapport : `série#id#date de création` ; versions ordonnées par date de **réception**.
+- Un push sur `main` publie une version de l'APK : ne pas fusionner le relais sur `main` sans l'avoir voulu.
 
 ## Tests
 
