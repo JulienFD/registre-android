@@ -23,7 +23,7 @@ module.exports = [
     languageOptions: { sourceType: 'module' },
   },
   {
-    files: ['www/utils.js', 'www/sauvegarde.js', 'www/nexptg.js', 'www/relais.js', 'tests/**/*.js', 'scripts/**/*.js', '*.js'],
+    files: ['www/utils.js', 'www/sauvegarde.js', 'www/nexptg.js', 'www/nexptg-vue.js', 'www/relais.js', 'tests/**/*.js', 'scripts/**/*.js', '*.js'],
     languageOptions: { sourceType: 'commonjs', globals: { ...globals.node } },
   },
 ];
