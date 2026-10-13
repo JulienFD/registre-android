@@ -122,6 +122,27 @@ test('une valeur non numérique garde son texte et n\'a pas de valeur', () => {
   assert.equal(v.texte, '∞');
 });
 
+// Rapport réel reçu en production : seules les mesures du capot ont été prises, le reste est ignoré.
+const rapportPartiel = () => lireSynchro(fixture('nexptg-rapport-mesures-ignorees.json')).rapports[0];
+
+test('une mesure ignorée dans NexPTG n\'a ni valeur, ni matériau, ni date', () => {
+  const v = rapportPartiel().externe[0].elements[0].valeurs[0];
+  assert.deepEqual(v, { valeur: null, texte: ' - ', materiau: '-', interpretation: -2, ts: 0, position: 1 });
+});
+
+test('un rapport partiel garde ses mesures réelles et ses sections vides', () => {
+  const r = rapportPartiel();
+  assert.equal(r.plaque, 'ZZ999ZZ');
+  assert.deepEqual(r.avertissements, []);
+  const capot = r.externe[2].elements[0];
+  assert.equal(capot.type, 'HOOD');
+  assert.deepEqual(capot.valeurs.map((v) => v.valeur), [70, 71, 73, 74, 74]);
+  assert.deepEqual(r.interne, []);
+  assert.deepEqual(r.pneus, []);
+  assert.equal(r.vehicule.marque, '');
+  assert.equal(r.vehicule.carrosserie, 'BREAK');
+});
+
 test('une entrée qui n\'est pas une synchro NexPTG est refusée', () => {
   assert.throws(() => lireSynchro('pas du json'), /JSON invalide/);
   assert.throws(() => lireSynchro('{}'), /Structure NexPTG inattendue/);
