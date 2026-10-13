@@ -42,6 +42,7 @@ La page d'accueil du projet (`/`) est une application web installable (dossier `
 - **Chaque photo est compressée (1600 px, JPEG q 0,78) et tamponnée** (plaque, date, auteur, phase) sur le téléphone, puis placée dans une **file locale** (IndexedDB) et envoyée dès que le réseau le permet : une photo prise n'est pas perdue si la connexion est coupée.
 - **Installation** : Chrome (Android) « Installer l'application », Safari (iPhone) « Sur l'écran d'accueil ». Sur iPhone, l'envoi ne reprend que page ouverte, et le stockage local d'un site non installé peut être purgé après une semaine sans usage : installer la page.
 - **Caméra** : flux direct si autorisé, sinon chaque photo ouvre l'appareil photo du téléphone.
+- **Essayer en local** : `npm run dev` à la racine du dépôt, puis `http://localhost:3000` (compte `demo`, mot de passe `demo-demo-demo`). C'est le vrai code du relais avec un stockage en mémoire. La caméra du navigateur n'est autorisée que sur `localhost` ou en HTTPS : pour essayer sur un téléphone, utiliser le déploiement Vercel.
 
 Sécurité : CSP stricte (aucun script ni style inline, aucune ressource externe), en-têtes dans `vercel.json`, aucune donnée du relais dans le cache du service worker (`/api/` jamais mis en cache). Le texte saisi est toujours inséré comme texte, jamais comme HTML.
 

@@ -10,7 +10,8 @@
     "apk": "cd android && ./gradlew assembleDebug",
     "lint": "eslint .",
     "test": "node --test tests/*.test.js",
-    "check": "npm run lint && npm test"
+    "check": "npm run lint && npm test",
+    "dev": "node scripts/dev-pwa.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",

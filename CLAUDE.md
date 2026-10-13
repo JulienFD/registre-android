@@ -14,6 +14,7 @@ App Android (Capacitor 8, WebView) de suivi des véhicules en atelier, pour une 
 - `npm run lint` : ESLint (`eslint.config.js`)
 - `npm test` : tests Node (`node --test`, dossier `tests/`)
 - `npm run check` : lint + tests (à lancer avant chaque commit)
+- `npm run dev` : sert la PWA photos sur `http://localhost:3000` avec le vrai code du relais et un stockage en mémoire (compte `demo`, mot de passe `demo-demo-demo`) ; `PORT=… npm run dev` pour changer de port
 - `npx cap sync android` : copie `www/` dans le projet Android
 - `cd android && ./gradlew lintDebug testDebugUnitTest assembleDebug` : lint Android, tests JVM, APK debug
 
