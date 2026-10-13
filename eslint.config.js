@@ -14,6 +14,15 @@ module.exports = [
     languageOptions: { sourceType: 'module' },
   },
   {
+    files: ['relais/**/*.js'],
+    languageOptions: { sourceType: 'commonjs', globals: { ...globals.node } },
+  },
+  {
+    // Syntaxe ES des fonctions Vercel (compilée en CommonJS par Vercel).
+    files: ['relais/api/**/*.js'],
+    languageOptions: { sourceType: 'module' },
+  },
+  {
     files: ['www/utils.js', 'www/sauvegarde.js', 'www/nexptg.js', 'tests/**/*.js', 'scripts/**/*.js', '*.js'],
     languageOptions: { sourceType: 'commonjs', globals: { ...globals.node } },
   },
