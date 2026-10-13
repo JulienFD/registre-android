@@ -17,6 +17,7 @@ export default {
       requete,
       corps: request.method === 'POST' ? await request.text() : '',
       comptes: comptes.lireComptes(process.env.RELAIS_COMPTES),
+      secret: process.env.RELAIS_SECRET,
       lecteurs: comptes.lireLecteurs(process.env.RELAIS_LECTEURS),
       stockage,
       maintenant: Date.now,

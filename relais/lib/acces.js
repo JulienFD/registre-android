@@ -1,13 +1,17 @@
 'use strict';
 // Contrôle d'accès commun aux routes : authentification, puis rôle lecteur. Une réponse de refus est renvoyée toute prête.
 const { verifierBasic } = require('./comptes.js');
+const { lireJeton } = require('./jeton.js');
 
 const SANS_CACHE = { 'Cache-Control': 'private, no-store' };
 const reponse = (statut, json, entetes) => ({ statut, json, entetes: Object.assign({}, SANS_CACHE, entetes) });
 
-// Renvoie { compte } ou { refus }.
+// Renvoie { compte } ou { refus }. Deux façons de s'authentifier : Bearer (jeton d'accès de la PWA) ou Basic (NexPTG, tablette).
 function authentifier(o) {
-  const compte = verifierBasic(o.authorization, o.comptes);
+  const entete = String(o.authorization || '');
+  const compte = /^Bearer\s/i.test(entete)
+    ? lireJeton(entete.slice(7).trim(), o.secret, o.comptes, typeof o.maintenant === 'function' ? o.maintenant() : Date.now())
+    : verifierBasic(entete, o.comptes);
   // Pas d'en-tête WWW-Authenticate : face à un défi Basic, le navigateur ouvrirait sa propre fenêtre d'identifiants par-dessus
   // celle de la PWA (« on me les redemande »). Ces routes sont appelées par du JavaScript, qui envoie Authorization lui-même.
   if (!compte) return { refus: reponse(401, { ok: false, erreur: 'authentification requise' }) };

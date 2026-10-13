@@ -11,6 +11,7 @@ export default {
       origine: request.headers.get('origin'),
       origines: cors.lireOrigines(process.env.RELAIS_ORIGINES),
       comptes: comptes.lireComptes(process.env.RELAIS_COMPTES),
+      secret: process.env.RELAIS_SECRET,
       lecteurs: comptes.lireLecteurs(process.env.RELAIS_LECTEURS),
     });
     if (r.statut === 204) return new Response(null, { status: 204, headers: r.entetes });

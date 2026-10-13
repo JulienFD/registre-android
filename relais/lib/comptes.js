@@ -38,19 +38,27 @@ function lireLecteurs(texte) {
 }
 
 // Renvoie le nom du compte, ou null. Le calcul est fait même pour un compte inconnu (temps constant).
-function verifierBasic(entete, comptes) {
-  const m = /^Basic\s+([A-Za-z0-9+/=]+)$/i.exec(String(entete || '').trim());
-  if (!m) return null;
-  const decode = Buffer.from(m[1], 'base64').toString('utf8');
-  const i = decode.indexOf(':');
-  if (i < 1) return null;
-  const nom = decode.slice(0, i);
-  const motDePasse = decode.slice(i + 1);
-  if (motDePasse.length > MDP_MAX) return null;
+function verifierMotDePasse(nom, motDePasse, comptes) {
+  if (typeof nom !== 'string' || typeof motDePasse !== 'string' || motDePasse.length > MDP_MAX) return null;
   const compte = comptes.get(nom);
   const ref = compte || FAUX;
   const egal = crypto.timingSafeEqual(empreinte(motDePasse, ref.sel), ref.hash);
   return compte && egal ? nom : null;
 }
 
-module.exports = { creerCompte, lireComptes, lireLecteurs, verifierBasic };
+function verifierBasic(entete, comptes) {
+  const m = /^Basic\s+([A-Za-z0-9+/=]+)$/i.exec(String(entete || '').trim());
+  if (!m) return null;
+  const decode = Buffer.from(m[1], 'base64').toString('utf8');
+  const i = decode.indexOf(':');
+  if (i < 1) return null;
+  return verifierMotDePasse(decode.slice(0, i), decode.slice(i + 1), comptes);
+}
+
+// Empreinte courte et stable de l'entrée d'un compte : elle change quand son mot de passe change, ce qui révoque ses sessions.
+function empreinteCompte(nom, comptes) {
+  const c = comptes.get(nom);
+  return c ? crypto.createHash('sha256').update(Buffer.concat([c.sel, c.hash])).digest('hex').slice(0, 16) : null;
+}
+
+module.exports = { creerCompte, lireComptes, lireLecteurs, verifierBasic, verifierMotDePasse, empreinteCompte };
