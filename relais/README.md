@@ -37,6 +37,7 @@ Réponses : `200` après stockage durable seulement, `401` authentification, `40
 La page d'accueil du projet (`/`) est une application web installable (dossier `public/`) : le téléphone y prend les photos des véhicules, qui rejoignent le dossier de la tablette.
 
 - **Connexion persistante** : on se connecte **une fois** avec un compte de `RELAIS_COMPTES` (le même que dans NexPTG), et la connexion dure **sans limite de temps** tant qu'on ne se déconnecte pas. Le mot de passe n'est jamais conservé sur le téléphone : il sert à ouvrir une session, dont seul un **jeton de rafraîchissement** est gardé. Ce jeton renouvelle en arrière-plan de courts jetons d'accès (30 minutes).
+- **Secret de signature** : rien à configurer. Le relais le génère lors de la première connexion et le range dans le store privé (`secret/signature.json`), indépendamment des comptes : ajouter ou retirer un technicien ne déconnecte personne. Pour forcer une rotation (tout le monde est déconnecté une fois), supprimer ce fichier du store puis redéployer, ou définir la variable facultative `RELAIS_SECRET` (au moins 32 caractères), qui est alors prioritaire.
 - **« Quitter »** supprime la session côté relais : le jeton devient inutilisable, même copié. Retirer le compte de `RELAIS_COMPTES`, ou changer son mot de passe, **révoque** aussitôt toutes ses sessions.
 - **Photos du véhicule (Entrée / Sortie)** : les vues sont annoncées une à une, comme dans le Registre, en sautant celles déjà prises pour cette plaque.
 - **NexPTG et Complément** : prise libre avec légende.
@@ -57,9 +58,8 @@ Sécurité : CSP stricte (aucun script ni style inline, aucune ressource externe
    node relais/scripts/creer-compte.js julien
    ```
    Le script affiche un mot de passe aléatoire (à saisir dans NexPTG, non conservé) et une entrée à copier dans la variable d'environnement `RELAIS_COMPTES` du projet. Plusieurs comptes : les séparer par `;`.
-4. **Secret des sessions** (nécessaire à la PWA) : `node relais/scripts/creer-secret.js`, à saisir dans la variable `RELAIS_SECRET` (Production, sensible). Sans elle, la PWA affiche « le relais n'est pas configuré pour les sessions ». Changer ce secret déconnecte tout le monde.
-5. **Compte de la tablette** (lecture seule du côté des rapports) : créer un compte `tablette` avec le même script, l'ajouter à `RELAIS_COMPTES`, puis définir `RELAIS_LECTEURS=tablette`. Ne pas lui donner à NexPTG : un compte lecteur n'a pas à saisir de mesures.
-6. **Déployer**, puis dans NexPTG : adresse `https://<projet>.vercel.app/api/nexptg`, identifiant et mot de passe du compte.
+4. **Compte de la tablette** (lecture seule du côté des rapports) : créer un compte `tablette` avec le même script, l'ajouter à `RELAIS_COMPTES`, puis définir `RELAIS_LECTEURS=tablette`. Ne pas lui donner à NexPTG : un compte lecteur n'a pas à saisir de mesures.
+5. **Déployer**, puis dans NexPTG : adresse `https://<projet>.vercel.app/api/nexptg`, identifiant et mot de passe du compte.
 
 ## Vérification
 

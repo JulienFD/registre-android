@@ -1,6 +1,7 @@
 // Point d'entrée Vercel des photos : adaptation mince entre Request/Response et lib/photos.js (testée).
 import comptes from '../lib/comptes.js';
 import cors from '../lib/cors.js';
+import secret from '../lib/secret.js';
 import photos from '../lib/photos.js';
 import blob from '../lib/stockage-blob.js';
 
@@ -21,7 +22,7 @@ export default {
       corps: request.method === 'POST' ? await request.text() : '',
       octets: request.method === 'PUT' ? new Uint8Array(await request.arrayBuffer()) : undefined,
       comptes: comptes.lireComptes(process.env.RELAIS_COMPTES),
-      secret: process.env.RELAIS_SECRET,
+      secret: await secret.obtenirSecret(stockage, process.env.RELAIS_SECRET).catch((e) => { console.error('secret', e && e.message); return undefined; }),
       lecteurs: comptes.lireLecteurs(process.env.RELAIS_LECTEURS),
       quotaPlaque: Number(process.env.RELAIS_QUOTA_PHOTOS) || undefined,
       stockage,

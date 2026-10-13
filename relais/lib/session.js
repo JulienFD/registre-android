@@ -47,7 +47,7 @@ async function quitter(o, corps) {
 
 async function servir(o) {
   if (o.methode !== 'POST') return reponse(405, { ok: false, erreur: 'méthode non autorisée' }, { Allow: 'POST' });
-  if (!secretValide(o.secret)) return erreur(503, 'sessions non configurées');
+  if (!secretValide(o.secret)) return erreur(503, 'sessions indisponibles');
   if (Buffer.byteLength(o.corps || '') > CORPS_MAX) return erreur(413, 'corps trop volumineux');
   let corps;
   try { corps = JSON.parse(o.corps); } catch { return erreur(400, 'corps illisible'); }

@@ -1,6 +1,7 @@
 // Point d'entrée Vercel de la lecture : adaptation mince entre Request/Response et lib/lecture.js (testée).
 import comptes from '../lib/comptes.js';
 import cors from '../lib/cors.js';
+import secret from '../lib/secret.js';
 import lecture from '../lib/lecture.js';
 import blob from '../lib/stockage-blob.js';
 
@@ -17,7 +18,7 @@ export default {
       requete,
       corps: request.method === 'POST' ? await request.text() : '',
       comptes: comptes.lireComptes(process.env.RELAIS_COMPTES),
-      secret: process.env.RELAIS_SECRET,
+      secret: await secret.obtenirSecret(stockage, process.env.RELAIS_SECRET).catch((e) => { console.error('secret', e && e.message); return undefined; }),
       lecteurs: comptes.lireLecteurs(process.env.RELAIS_LECTEURS),
       stockage,
       maintenant: Date.now,

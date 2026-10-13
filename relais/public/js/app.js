@@ -24,7 +24,7 @@ function ecranConnexion(message) {
     mdp.value = '';
     if (statut === 200) accueil();
     else erreur.textContent = statut === 401 ? 'Identifiants refusés.' : statut === 0 ? 'Relais injoignable : vérifier la connexion.'
-      : statut === 503 ? 'Le relais n’est pas configuré pour les sessions (variable RELAIS_SECRET).' : 'Le relais est indisponible.';
+      : statut === 503 ? 'Les sessions sont momentanément indisponibles : réessayer dans un instant.' : 'Le relais est indisponible.';
   } },
   h('h1', {}, 'Photos du dossier'),
   h('label', {}, h('span', {}, 'Compte'), compte),
