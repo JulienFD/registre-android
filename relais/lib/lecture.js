@@ -1,18 +1,16 @@
 'use strict';
 // Lecture des rapports par la tablette : lister par plaque, réclamer pour un dossier, libérer.
 const crypto = require('node:crypto');
-const { verifierBasic } = require('./comptes.js');
-const { entetesCors, preflight } = require('./cors.js');
+const { reponse, exigerLecteur } = require('./acces.js');
+const { avecCors } = require('./cors.js');
 
 const PLAQUE = /^(?:[A-Z0-9]{2,15}|_sans-plaque)$/;
 const DOSSIER = /^[A-Za-z0-9_-]{1,64}$/;
 const CLE_MAX = 300;
 const CORPS_MAX = 4096;
-const SANS_CACHE = { 'Cache-Control': 'private, no-store' };
 
 const empreinte = (texte) => crypto.createHash('sha256').update(texte).digest('hex');
 const cheminReclamation = (cle) => 'reclamations/' + empreinte(cle) + '.json';
-const reponse = (statut, json, entetes) => ({ statut, json, entetes: Object.assign({}, SANS_CACHE, entetes) });
 
 // Regroupe les versions par identité de rapport ; la plus récemment reçue passe en tête.
 async function chargerRapports(stockage, plaque) {
@@ -81,20 +79,10 @@ async function liberer(o) {
   return reponse(200, { ok: true, cle, libre: true });
 }
 
-// Authentifie, puis n'admet que les comptes lecteurs. Renvoie { compte } ou { refus } (réponse à émettre).
-function controlerAcces(o) {
-  const compte = verifierBasic(o.authorization, o.comptes);
-  if (!compte) {
-    return { refus: reponse(401, { ok: false, erreur: 'authentification requise' }, { 'WWW-Authenticate': 'Basic realm="relais", charset="UTF-8"' }) };
-  }
-  if (!o.lecteurs.has(compte)) return { refus: reponse(403, { ok: false, erreur: 'accès en lecture non autorisé' }) };
-  return { compte };
-}
-
 // Comptes d'envoi (techniciens) : ceux de la configuration, sans les comptes lecteurs. Jamais d'empreinte.
 async function techniciens(o) {
   if (o.methode !== 'GET') return reponse(405, { ok: false, erreur: 'méthode non autorisée' }, { Allow: 'GET' });
-  const acces = controlerAcces(o);
+  const acces = exigerLecteur(o);
   if (acces.refus) return acces.refus;
   const noms = [...o.comptes.keys()].filter((nom) => !o.lecteurs.has(nom)).sort();
   return reponse(200, { ok: true, techniciens: noms });
@@ -104,7 +92,7 @@ async function rapports(o) {
   if (!['GET', 'POST', 'DELETE'].includes(o.methode)) {
     return reponse(405, { ok: false, erreur: 'méthode non autorisée' }, { Allow: 'GET, POST, DELETE' });
   }
-  const acces = controlerAcces(o);
+  const acces = exigerLecteur(o);
   if (acces.refus) return acces.refus;
   const compte = acces.compte;
 
@@ -121,15 +109,6 @@ async function rapports(o) {
     console.error('stockage', e && e.message);
     return reponse(500, { ok: false, erreur: 'stockage indisponible' });
   }
-}
-
-// Pré-requête CORS traitée avant tout contrôle ; les autres réponses portent l'autorisation CORS, erreurs comprises.
-function avecCors(fn) {
-  return async function (o) {
-    if (o.methode === 'OPTIONS') return preflight(o.origine, o.origines);
-    const r = await fn(o);
-    return Object.assign({}, r, { entetes: Object.assign({}, r.entetes, entetesCors(o.origine, o.origines)) });
-  };
 }
 
 module.exports = { servirRapports: avecCors(rapports), servirTechniciens: avecCors(techniciens) };

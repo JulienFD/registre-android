@@ -28,4 +28,13 @@ function preflight(origine, origines) {
   return { statut: 204, json: null, entetes };
 }
 
-module.exports = { lireOrigines, entetesCors, preflight, ORIGINE_APPLICATION };
+// Enveloppe une fonction de service : pré-requête traitée avant tout contrôle, autorisation CORS ajoutée aux autres réponses (erreurs comprises).
+function avecCors(fn) {
+  return async function (o) {
+    if (o.methode === 'OPTIONS') return preflight(o.origine, o.origines);
+    const r = await fn(o);
+    return Object.assign({}, r, { entetes: Object.assign({}, r.entetes, entetesCors(o.origine, o.origines)) });
+  };
+}
+
+module.exports = { lireOrigines, entetesCors, preflight, avecCors, ORIGINE_APPLICATION };
