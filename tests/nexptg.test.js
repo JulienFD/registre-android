@@ -17,6 +17,7 @@ test('l\'historique des mesures libres est lu avec dates en millisecondes', () =
   assert.equal(rapports.length, 0);
   assert.equal(historique.length, 1);
   assert.equal(historique[0].nom, 'Général');
+  assert.deepEqual(historique[0].brut, JSON.parse(fixture('nexptg-historique.json')).data.history[0]);
   assert.equal(historique[0].mesures.length, 8);
   assert.deepEqual(historique[0].mesures[0], { valeur: 85, texte: '85', materiau: 'Fe', interpretation: 1, ts: 1791885950000, position: null });
 });

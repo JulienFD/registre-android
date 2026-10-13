@@ -79,7 +79,7 @@
 
   function historique(h) {
     h = h || {};
-    return { id: h.id, nom: txt(h.name), mesures: tableau(h.data).map(mesure) };
+    return { id: h.id, nom: txt(h.name), mesures: tableau(h.data).map(mesure), brut: h };
   }
 
   // Seule une structure illisible est refusée : un rapport étrange est lu au mieux et conservé (brut).
