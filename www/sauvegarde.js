@@ -3,7 +3,7 @@
   'use strict';
 
   /* config.json (code PIN, dossier de copie) n'est jamais sauvegardé. */
-  var CHEMIN_SAUVEGARDE = /^(vehicules\/[A-Za-z0-9_-]{1,120}\/(dossier\.json|(photos\/[A-Za-z0-9_-]{1,120}\.(json|jpg|pdf))|(compl\/[A-Za-z0-9_-]{1,120}\.json))|archives\/(Entrees|Dossiers)\/\d{4}\/[A-Za-z0-9._-]{1,200}\.pdf|archives\/REGISTRE-INTEGRITE\.csv)$/;
+  var CHEMIN_SAUVEGARDE = /^(vehicules\/[A-Za-z0-9_-]{1,120}\/(dossier\.json|(photos\/[A-Za-z0-9_-]{1,120}\.(json|jpg|pdf))|(compl\/[A-Za-z0-9_-]{1,120}\.json)|(nexptg\/[A-Za-z0-9_-]{1,120}\.json))|archives\/(Entrees|Dossiers)\/\d{4}\/[A-Za-z0-9._-]{1,200}\.pdf|archives\/REGISTRE-INTEGRITE\.csv)$/;
 
   function cheminSauvegardeValide(p) {
     return typeof p === 'string' && CHEMIN_SAUVEGARDE.test(p);

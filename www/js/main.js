@@ -64,6 +64,7 @@ renderMain();
     S.list = Object.keys(all.vehicules).map(function (id) { var o = all.vehicules[id]; o.id = id; return o });
     Object.keys(all.photos).forEach(function (id) { S.pm[id] = Object.keys(all.photos[id]).map(function (pid) { var o = all.photos[id][pid]; o.id = pid; o.vid = id; return o }) });
     Object.keys(all.compl).forEach(function (id) { S.cm[id] = Object.keys(all.compl[id]).map(function (cid) { var o = all.compl[id][cid]; o.id = cid; return o }) });
+    Object.keys(all.nexptg || {}).forEach(function (id) { S.nm[id] = Object.keys(all.nexptg[id]).map(function (sha) { return all.nexptg[id][sha] }) });
   } catch (e) { S.dberr = 'Lecture des dossiers impossible : ' + (e && e.message || 'erreur') }
   S.loaded = true; renderMain();
   setInterval(function () { var c = $('#clk'); if (c) c.textContent = fmtDT(Date.now()) }, 15000);

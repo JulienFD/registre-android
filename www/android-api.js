@@ -23,7 +23,7 @@
     var s = String(p).split('/');
     if (s[0] !== 'vehicules' || !okId(s[1])) throw new Error('chemin invalide');
     if (s.length === 2) return { file: 'vehicules/' + s[1] + '/dossier.json', kind: 'vehicule', id: s[1] };
-    if (s.length === 4 && (s[2] === 'photos' || s[2] === 'compl') && okId(s[3])) return { file: 'vehicules/' + s[1] + '/' + s[2] + '/' + s[3] + '.json', kind: s[2], id: s[1], sub: s[3] };
+    if (s.length === 4 && (s[2] === 'photos' || s[2] === 'compl' || s[2] === 'nexptg') && okId(s[3])) return { file: 'vehicules/' + s[1] + '/' + s[2] + '/' + s[3] + '.json', kind: s[2], id: s[1], sub: s[3] };
     throw new Error('chemin invalide');
   }
   async function readDir(dir) {
@@ -113,11 +113,11 @@
   window.api = {
     loadAll: async function () {
       await ensureBase();
-      var all = { vehicules: {}, photos: {}, compl: {} }, ids = await ls('vehicules');
+      var all = { vehicules: {}, photos: {}, compl: {}, nexptg: {} }, ids = await ls('vehicules');
       for (var i = 0; i < ids.length; i++) {
         var id = ids[i]; if (!okId(id)) continue;
         var d = await rj('vehicules/' + id + '/dossier.json'); if (!d) continue;
-        all.vehicules[id] = d; all.photos[id] = await readDir('vehicules/' + id + '/photos'); all.compl[id] = await readDir('vehicules/' + id + '/compl');
+        all.vehicules[id] = d; all.photos[id] = await readDir('vehicules/' + id + '/photos'); all.compl[id] = await readDir('vehicules/' + id + '/compl'); all.nexptg[id] = await readDir('vehicules/' + id + '/nexptg');
       }
       return all;
     },
