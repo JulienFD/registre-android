@@ -154,19 +154,32 @@ export async function buildPdf(v, photos, mode, cid) {
       txt('Le PDF joint « ' + p.label + ' » n\'a pas pu être intégré à ce document. Il reste disponible dans le dossier, onglet Mesures.', M, y, { s: 10, w: W - 2 * M });
     }
   }
+  /* Mesures NexPTG : la synthèse (schémas et tableaux) remplace la recopie des pages du PDF NexDiag, qui doublonnait les photos. */
+  var nx = window.Nexptg.etatNexptg(v, S.nm[v.id] || []);
   var mes = v.mes || {}, mrows = PANELS.filter(function (q) { return mes[q[0]] });
   var mph = photos.filter(function (p) { return p.phase === 'mesures' && p.kind !== 'pdf' }).sort(function (a, b) { return a.ts - b.ts });
   var mpd = photos.filter(function (p) { return p.phase === 'mesures' && p.kind === 'pdf' }).sort(function (a, b) { return a.ts - b.ts });
-  if (mode === 'full' && (mrows.length || v.mesNotes || mph.length || mpd.length)) {
+  if (mode === 'full' && nx.statut === 'recu') {
+    doc.addPage(); band('MESURES NEXPTG', fmtPlate(v.plaque));
+    var dn = nx.derniere, plan = window.NexptgPdf.planSynthese(window.Nexptg.lireRapport(dn.brut), { recu: dn.recu, par: dn.par, nbVersions: nx.nbVersions, avertissements: dn.avertissements });
+    y = window.NexptgPdf.dessiner(doc, plan, { x0: M, largeur: W - 2 * M, y: y, assurer: function (hh, yc) { if (yc + hh > 282) { doc.addPage(); band('MESURES NEXPTG (suite)', fmtPlate(v.plaque)); return y } return yc } });
+    if (mpd.length) { ens(10); y += 3; txt('Le PDF NexDiag importé (' + mpd.map(function (p) { return p.label }).join(', ') + ') reste joint au dossier ; il n’est pas recopié ici.', M, y, { s: 8, c: mut, w: W - 2 * M }) }
+  } else if (mode === 'full' && nx.statut === 'termine') {
+    doc.addPage(); band('MESURES NEXPTG', fmtPlate(v.plaque));
+    h2('Terminé sans rapport NexPTG'); para('Motif', nx.termine.motif);
+    txt('Par ' + (nx.termine.par || '-') + ' le ' + fmtDT(nx.termine.at) + '. Aucune mesure NexPTG n’est jointe à ce dossier.', M, y, { s: 9, c: mut, w: W - 2 * M });
+  }
+  var mpdRecopie = nx.statut === 'recu' ? [] : mpd;
+  if (mode === 'full' && (mrows.length || v.mesNotes || mph.length || mpdRecopie.length)) {
     doc.addPage(); band("MESURES D'ÉPAISSEUR", fmtPlate(v.plaque));
     if (mrows.length) {
       h2('Épaisseurs relevées (microns)'); var c3 = (W - 2 * M) / 3;
       mrows.forEach(function (q, i) { if (i > 0 && i % 3 === 0) y += 11; kv(q[1], mes[q[0]] + ' µm', M + (i % 3) * c3, c3 - 3) }); y += 14;
     }
     para('Notes d\'analyse', v.mesNotes);
-    if (!mrows.length && !v.mesNotes) { txt(mpd.length ? 'Analyse de l\'appareil jointe aux pages suivantes.' : 'Photos de mesure aux pages suivantes.', M, y, { s: 10 }) }
+    if (!mrows.length && !v.mesNotes) { txt(mpdRecopie.length ? 'Analyse de l\'appareil jointe aux pages suivantes.' : 'Photos de mesure aux pages suivantes.', M, y, { s: 10 }) }
     await photoPages(mph, 'PHOTOS DE MESURE');
-    for (var qi = 0; qi < mpd.length; qi++)await pdfPages(mpd[qi]);
+    for (var qi = 0; qi < mpdRecopie.length; qi++)await pdfPages(mpdRecopie[qi]);
   }
 
   if (mode === 'full' && cl.length) { doc.addPage(); band('COMPLÉMENTS AU DOSSIER', fmtPlate(v.plaque)); await complements(cl) }
