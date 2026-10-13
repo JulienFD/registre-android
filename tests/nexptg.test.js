@@ -22,11 +22,27 @@ test('l\'historique des mesures libres est lu avec dates en millisecondes', () =
   assert.deepEqual(historique[0].mesures[0], { valeur: 85, texte: '85', materiau: 'Fe', interpretation: 1, ts: 1791885950000, position: null });
 });
 
-test('un rapport est identifié par le numéro de série de l\'appareil et son id', () => {
+test('un rapport est identifié par appareil, id et date de création', () => {
   const r = rapport();
-  assert.equal(r.cle, '28409 Professional#1');
+  assert.equal(r.cle, '28409 Professional#1#1791887764');
   assert.equal(r.serie, '28409 Professional');
   assert.equal(r.id, 1);
+});
+
+test('une version modifiée du même rapport garde la même identité', () => {
+  const v1 = lireSynchro(fixture('nexptg-rapport-mesures-ignorees.json')).rapports[0];
+  const v2 = lireSynchro(fixture('nexptg-rapport-mesures-ignorees-v2.json')).rapports[0];
+  assert.equal(v1.cle, '28409 Professional#2#1791896184');
+  assert.equal(v2.cle, v1.cle);
+  assert.equal(v1.commentaire, '');
+  assert.equal(v2.commentaire, 'Blabla');
+});
+
+test('le même id sur un autre rapport (application réinstallée) a une autre identité', () => {
+  const brut = JSON.parse(fixture('nexptg-rapport-mesures-ignorees.json'));
+  const autre = JSON.parse(JSON.stringify(brut));
+  autre.data.reports[0].date = 1791999999;
+  assert.notEqual(lireSynchro(brut).rapports[0].cle, lireSynchro(autre).rapports[0].cle);
 });
 
 test('les données du véhicule et du rapport sont lues', () => {
@@ -107,7 +123,7 @@ test('le rapport d\'origine est conservé tel quel, sans perte', () => {
 
 test('un rapport incomplet est lu quand même et signalé, jamais rejeté', () => {
   const r = lireSynchro({ data: { history: [], reports: [{ id: 3, unexpected: { a: 1 } }] } }).rapports[0];
-  assert.equal(r.cle, '#3');
+  assert.equal(r.cle, '#3#');
   assert.deepEqual(r.externe, []);
   assert.deepEqual(r.pneus, []);
   assert.ok(r.avertissements.includes('numéro de série absent'));

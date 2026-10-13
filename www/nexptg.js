@@ -63,7 +63,8 @@
     if (!serie) avertissements.push('numéro de série absent');
     var champs = tableau(r.extraFields).map(function (f) { f = f || {}; return { titre: txt(f.title), texte: txt(f.text) }; });
     return {
-      cle: serie + '#' + txt(r.id), id: r.id, serie: serie, nom: txt(r.name), date: enMs(r.date),
+      // `id` est local à l'application (réutilisable) ; `date` est la création et ne change pas aux modifications.
+      cle: serie + '#' + txt(r.id) + '#' + txt(r.date), id: r.id, serie: serie, nom: txt(r.name), date: enMs(r.date),
       unite: txt(r.unitOfMeasure), commentaire: txt(r.comment),
       vehicule: {
         marque: txt(r.brand), modele: txt(r.model), carrosserie: txt(r.typeOfBody), cylindree: txt(r.capacity),

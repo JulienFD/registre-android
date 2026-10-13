@@ -112,7 +112,7 @@ test('un rapport est rangé par plaque avec son contenu d\'origine intact', asyn
   assert.equal(blob.par, 'julien');
   assert.equal(blob.recu, NOW);
   assert.equal(blob.plaque, 'AB123CD');
-  assert.equal(blob.cle, '28409 Professional#1');
+  assert.equal(blob.cle, '28409 Professional#1#1791887764');
   assert.deepEqual(blob.brut, JSON.parse(fixture('nexptg-rapport-champ.json')).data.reports[0]);
   assert.ok(chemin.endsWith(blob.sha256 + '.json'));
 });
