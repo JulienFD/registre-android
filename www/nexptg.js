@@ -176,8 +176,22 @@
     };
   }
 
+  // Sens des codes déduit de rapports réels (0 : jusqu'à 16 µm, 1 : 70–123, 2 : 193–258, 3 : 413, 5 : 1609) ; le code 4 n'a jamais été observé.
+  var CATEGORIES = {
+    '0': 'Couche trop mince', '1': 'Peinture d\'origine', '2': 'Seconde couche',
+    '3': 'Couche mince de mastic', '4': 'Couche épaisse de mastic', '5': 'Couche épaisse de mastic', '-2': 'Mesure ignorée',
+  };
+
+  // Classe CSS et libellé d'un code d'interprétation ; un code inconnu n'est jamais masqué (« Non classée »).
+  function categorie(code) {
+    var c = String(code);
+    if (c === '-2') return { classe: 'nx-i-ignore', libelle: CATEGORIES['-2'] };
+    if (CATEGORIES[c]) return { classe: 'nx-i-' + c, libelle: CATEGORIES[c] };
+    return { classe: 'nx-i-na', libelle: 'Non classée' };
+  }
+
   var Nexptg = {
-    lireSynchro: lireSynchro, etatNexptg: etatNexptg, demandeTermine: demandeTermine,
+    categorie: categorie, lireSynchro: lireSynchro, etatNexptg: etatNexptg, demandeTermine: demandeTermine,
     candidats: candidats, versionAjouter: versionAjouter,
     libelleElement: libelleElement, libelleZone: libelleZone, libelleRoue: libelleRoue, libelleSaison: libelleSaison,
     statsElement: statsElement, lireRapport: function (brut) { return rapport(brut); },

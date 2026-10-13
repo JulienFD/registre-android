@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { lireSynchro, etatNexptg, candidats, demandeTermine, versionAjouter, libelleElement, libelleZone, libelleRoue, libelleSaison, lireRapport, statsElement } = require('../www/nexptg.js');
+const { lireSynchro, etatNexptg, candidats, demandeTermine, versionAjouter, libelleElement, libelleZone, libelleRoue, libelleSaison, lireRapport, statsElement, categorie } = require('../www/nexptg.js');
 
 const fixture = (nom) => fs.readFileSync(path.join(__dirname, 'fixtures', nom), 'utf8');
 const rapport = () => lireSynchro(fixture('nexptg-rapport.json')).rapports[0];
@@ -317,4 +317,12 @@ test('lireRapport normalise un rapport brut seul, comme lireSynchro', () => {
   const brut = fixture('nexptg-rapport-champ.json');
   const seul = lireRapport(JSON.parse(brut).data.reports[0]);
   assert.deepEqual(seul, lireSynchro(brut).rapports[0]);
+});
+
+test('categorie associe un code d\'interprétation à une classe et un libellé, sans masquer un code inconnu', () => {
+  assert.deepEqual(categorie(1), { classe: 'nx-i-1', libelle: 'Peinture d\'origine' });
+  assert.equal(categorie(2).libelle, 'Seconde couche');
+  assert.equal(categorie(5).classe, 'nx-i-5');
+  assert.deepEqual(categorie(-2), { classe: 'nx-i-ignore', libelle: 'Mesure ignorée' });
+  assert.deepEqual(categorie(99), { classe: 'nx-i-na', libelle: 'Non classée' });
 });
