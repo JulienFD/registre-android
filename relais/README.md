@@ -11,6 +11,11 @@ Ce dossier est déployé séparément de l'app Android (Root Directory `relais` 
 
 | `GET /api/rapports?plaque=AB123CD[&par=julien]` | Liste les rapports d'une plaque (dernière version reçue, versions précédentes listées). `plaque=_sans-plaque` : rapports sans immatriculation |
 | `GET /api/techniciens` | Liste les techniciens : les comptes de `RELAIS_COMPTES` sauf les lecteurs (jamais d'empreinte). Sert au sélecteur « Qui mesure ? » |
+| `PUT /api/photos?plaque=…&phase=…&slot=…` | Reçoit une photo JPEG (corps binaire) : tout compte authentifié. Validation stricte (structure JPEG, 320–5000 px, 2 Mo max), 200 photos par plaque |
+| `GET /api/photos?plaque=…&vue=etat` | Emplacements déjà pris pour une plaque (tout compte ; ni empreinte ni auteur) |
+| `GET /api/photos?plaque=…` | Liste des photos d'une plaque, avec leur état de réclamation (lecteurs) |
+| `GET /api/photos?plaque=…&sha=…` | Octets d'une photo (lecteurs) |
+| `POST /api/photos` · `DELETE /api/photos?sha256=…&dossier=…` | Réclame / libère une photo pour un dossier (lecteurs) |
 | `POST /api/rapports` | Réclame un rapport pour un dossier : `{"cle", "plaque", "dossier"}` ; `409` s'il l'est déjà par un autre dossier |
 | `DELETE /api/rapports?cle=…&dossier=…` | Libère une réclamation (seul le dossier qui l'a faite) |
 
@@ -26,6 +31,19 @@ Stockage (JSON, nom de fichier = SHA-256 du contenu, donc un renvoi identique es
 - `reclamations/<sha256 de la clé>.json` : le dossier auquel un rapport est rattaché. La clé d'un rapport est `série#id#date de création` : elle ne change pas quand le rapport est modifié, donc toutes ses versions suivent le même dossier. L'ordre des versions se fait sur la date de **réception**, jamais sur la `date` du rapport (qui reste celle de la création).
 
 Réponses : `200` après stockage durable seulement, `401` authentification, `405` méthode, `413` corps > 2 Mo, `422` corps illisible, `500` stockage indisponible.
+
+## PWA photos
+
+La page d'accueil du projet (`/`) est une application web installable (dossier `public/`) : le téléphone y prend les photos des véhicules, qui rejoignent le dossier de la tablette.
+
+- **Connexion** avec un compte de `RELAIS_COMPTES` (le même que dans NexPTG). Identifiants conservés sur le téléphone ; « Quitter » les efface.
+- **Photos du véhicule (Entrée / Sortie)** : les vues sont annoncées une à une, comme dans le Registre, en sautant celles déjà prises pour cette plaque.
+- **NexPTG et Complément** : prise libre avec légende.
+- **Chaque photo est compressée (1600 px, JPEG q 0,78) et tamponnée** (plaque, date, auteur, phase) sur le téléphone, puis placée dans une **file locale** (IndexedDB) et envoyée dès que le réseau le permet : une photo prise n'est pas perdue si la connexion est coupée.
+- **Installation** : Chrome (Android) « Installer l'application », Safari (iPhone) « Sur l'écran d'accueil ». Sur iPhone, l'envoi ne reprend que page ouverte, et le stockage local d'un site non installé peut être purgé après une semaine sans usage : installer la page.
+- **Caméra** : flux direct si autorisé, sinon chaque photo ouvre l'appareil photo du téléphone.
+
+Sécurité : CSP stricte (aucun script ni style inline, aucune ressource externe), en-têtes dans `vercel.json`, aucune donnée du relais dans le cache du service worker (`/api/` jamais mis en cache). Le texte saisi est toujours inséré comme texte, jamais comme HTML.
 
 ## Mise en place (une fois)
 

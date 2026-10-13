@@ -48,6 +48,7 @@ App Android (Capacitor 8, WebView) de suivi des véhicules en atelier, pour une 
 
 - Fonctions Vercel (`relais/api/`) et logique testée (`relais/lib/`), déployées séparément de l'APK : voir `relais/README.md`. Le code reste **sans secret** ; comptes et jetons sont des variables d'environnement Vercel.
 - Les rapports NexPTG sont conservés bruts (jamais modifiés) ; les corrections du Registre s'ajoutent en surcouche. Identité d'un rapport : `série#id#date de création` ; versions ordonnées par date de **réception**.
+- `relais/public/` contient la PWA photos (modules ES natifs, sans bundler) : `js/pur.mjs` est la logique pure testée (les vues du véhicule y doublent `constants.js`, un test vérifie la synchro) ; le reste dépend du navigateur. Aucun `innerHTML` : le DOM est construit par `js/dom.js`.
 - Un push sur `main` publie une version de l'APK : ne pas fusionner le relais sur `main` sans l'avoir voulu.
 
 ## Tests

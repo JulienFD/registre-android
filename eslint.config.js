@@ -23,6 +23,15 @@ module.exports = [
     languageOptions: { sourceType: 'module' },
   },
   {
+    // PWA photos : modules ES du navigateur ; le service worker a ses propres globales.
+    files: ['relais/public/**/*.js', 'relais/public/**/*.mjs'],
+    languageOptions: { sourceType: 'module', ecmaVersion: 2022, globals: { ...globals.browser } },
+  },
+  {
+    files: ['relais/public/sw.js'],
+    languageOptions: { sourceType: 'script', globals: { ...globals.serviceworker } },
+  },
+  {
     files: ['www/utils.js', 'www/sauvegarde.js', 'www/nexptg.js', 'www/nexptg-vue.js', 'www/nexptg-schema.js', 'www/nexptg-pdf.js', 'www/relais.js', 'tests/**/*.js', 'scripts/**/*.js', '*.js'],
     languageOptions: { sourceType: 'commonjs', globals: { ...globals.node } },
   },
