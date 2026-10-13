@@ -47,3 +47,6 @@ npm-debug.log*
 
 # Captures Playwright
 .playwright-mcp/
+
+# Documents de travail locaux (rapports et captures de test)
+docs/
