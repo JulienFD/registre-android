@@ -65,3 +65,20 @@ test('le tampon reprend plaque, date, auteur et phase comme dans le Registre', a
   assert.match(tampon('B1234', ts, 'elwen', 'compl'), /^B1234 {2}·.*COMPLÉMENT$/);
   assert.match(tampon('AB123CD', ts, 'elwen', 'mesures'), /MESURES$/);
 });
+
+test('jetonUtilisable ne garde un jeton que s\'il lui reste plus que la marge', async () => {
+  const { jetonUtilisable } = await charger();
+  const acces = { jeton: 'x', expire: 1000000 };
+  assert.equal(jetonUtilisable(acces, 900000, 60000), true);
+  assert.equal(jetonUtilisable(acces, 950000, 60000), false);
+  assert.equal(jetonUtilisable(acces, 1000001, 0), false);
+  assert.equal(jetonUtilisable(null, 0, 0), false);
+  assert.equal(jetonUtilisable({ jeton: '', expire: 9e9 }, 0, 0), false);
+});
+
+test('expirationLocale convertit une durée du serveur en échéance de l\'horloge locale', async () => {
+  const { expirationLocale } = await charger();
+  assert.equal(expirationLocale(1000, 1800), 1000 + 1800000);
+  assert.equal(expirationLocale(1000, 'abc'), 1000);
+  assert.equal(expirationLocale(1000, -5), 1000);
+});

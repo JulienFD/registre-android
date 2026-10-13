@@ -7,6 +7,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { creerCompte, lireComptes } = require('../relais/lib/comptes.js');
 const { servirPhotos, TAILLE_MAX } = require('../relais/lib/photos.js');
+const { servirSession } = require('../relais/lib/session.js');
+const crypto = require('node:crypto');
 
 const RACINE = path.join(__dirname, '..', 'relais', 'public');
 const COMPTE_DEMO = 'demo';
@@ -50,6 +52,7 @@ function creerServeur() {
   const lecteurs = new Set([COMPTE_DEMO]);
   const stockage = stockageMemoire();
   const entetes = enteteProduction();
+  const secret = crypto.randomBytes(48).toString('base64url'); // propre à ce serveur : les sessions meurent avec lui
 
   async function api(req, res, url) {
     const brut = ['PUT', 'POST'].includes(req.method) ? await lireCorps(req) : Buffer.alloc(0);
@@ -57,17 +60,28 @@ function creerServeur() {
       methode: req.method, authorization: req.headers.authorization, origine: req.headers.origin,
       requete: Object.fromEntries(url.searchParams), corps: req.method === 'POST' ? brut.toString('utf8') : '',
       octets: req.method === 'PUT' ? new Uint8Array(brut) : undefined,
-      comptes, lecteurs, stockage, maintenant: Date.now,
+      comptes, lecteurs, stockage, secret, maintenant: Date.now,
     });
     if (req.method === 'PUT') console.log('[photo] ' + url.searchParams.get('plaque') + ' ' + url.searchParams.get('phase') + ' ' + (url.searchParams.get('slot') || '-') + ' → ' + r.statut);
     res.writeHead(r.statut, r.octets ? r.entetes : Object.assign({ 'Content-Type': 'application/json' }, r.entetes));
     res.end(r.octets ? Buffer.from(r.octets) : r.statut === 204 ? undefined : JSON.stringify(r.json));
   }
 
+  async function sessions(req, res, url) {
+    const brut = req.method === 'POST' ? (await lireCorps(req)).toString('utf8') : '';
+    const r = await servirSession({
+      methode: req.method, origine: req.headers.origin, requete: Object.fromEntries(url.searchParams), corps: brut,
+      comptes, stockage, secret, maintenant: Date.now,
+    });
+    res.writeHead(r.statut, Object.assign({ 'Content-Type': 'application/json' }, r.entetes));
+    res.end(r.statut === 204 ? undefined : JSON.stringify(r.json));
+  }
+
   return http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://127.0.0.1');
       if (url.pathname === '/api/photos') return await api(req, res, url);
+      if (url.pathname === '/api/session') return await sessions(req, res, url);
       // Pas de service worker en développement : il servirait des fichiers périmés.
       if (url.pathname === '/sw.js') { res.writeHead(404); return res.end('service worker désactivé en développement'); }
       const demande = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname);

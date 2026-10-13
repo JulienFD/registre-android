@@ -59,3 +59,14 @@ export function tampon(plaque, ts, qui, phase) {
   const date = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   return plaqueLisible(plaque) + '  ·  ' + date + '  ·  ' + qui + '  ·  ' + (PHASES[phase] || phase.toUpperCase());
 }
+
+// Un jeton d'accès n'est réutilisé que s'il lui reste plus que la marge (le serveur le refuserait sinon).
+export function jetonUtilisable(acces, maintenant, margeMs) {
+  return !!acces && typeof acces.jeton === 'string' && acces.jeton.length > 0 && acces.expire - maintenant > margeMs;
+}
+
+// Échéance sur l'horloge locale, à partir de la durée de validité annoncée par le serveur (en secondes).
+export function expirationLocale(maintenant, expireDansSec) {
+  const s = Number(expireDansSec);
+  return maintenant + (Number.isFinite(s) && s > 0 ? s * 1000 : 0);
+}

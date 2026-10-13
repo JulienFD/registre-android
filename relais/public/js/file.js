@@ -29,14 +29,14 @@ export const lister = () => tx('readonly', (s) => s.getAll());
 export const retirer = (id) => tx('readwrite', (s) => s.delete(id));
 const mettreAJour = (rec) => tx('readwrite', (s) => s.put(rec));
 
-/* Envoie les photos en attente, une par une. Renvoie 'ok', 'connexion' (identifiants refusés) ou 'reseau' (à reprendre plus tard). */
-export async function vider(auth) {
+/* Envoie les photos en attente, une par une. Renvoie 'ok', 'connexion' (session à rouvrir) ou 'reseau' (à reprendre plus tard). */
+export async function vider() {
   if (enCours) return 'ok';
   enCours = true;
   try {
     const attente = (await lister()).filter((p) => !p.rejetee).sort((a, b) => a.id - b.id);
     for (const p of attente) {
-      const statut = await envoyer(auth, { plaque: p.plaque, phase: p.phase, slot: p.slot, label: p.label, prise: p.prise }, p.blob);
+      const statut = await envoyer({ plaque: p.plaque, phase: p.phase, slot: p.slot, label: p.label, prise: p.prise }, p.blob);
       const d = decisionApres(statut);
       if (d === 'ok') await retirer(p.id);
       else if (d === 'rejeter') await mettreAJour(Object.assign({}, p, { rejetee: true, statut: statut }));

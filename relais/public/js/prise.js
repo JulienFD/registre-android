@@ -7,7 +7,7 @@ import { manquants, progression, SORTIE_REQ } from './pur.mjs';
 
 const TITRES = { entree: 'Photos d’entrée', sortie: 'Photos de sortie', mesures: 'Photos NexPTG', compl: 'Photos complémentaires' };
 
-/* c : { auth, plaque, plaqueAffichee, phase, etat } ; retour() revient à l'accueil ; synchro(msg) notifie l'accueil. */
+/* c : { qui, plaque, plaqueAffichee, phase, etat } ; retour() revient à l'accueil ; synchro(msg) notifie l'accueil. */
 export async function ouvrirPrise(racine, c, retour, synchro) {
   const guide = c.phase === 'entree' || c.phase === 'sortie';
   const file = guide ? manquants(c.etat, c.phase) : [];
@@ -75,7 +75,7 @@ export async function ouvrirPrise(racine, c, retour, synchro) {
       const v = vueCourante();
       const ts = Date.now();
       const label = guide ? v.l : legende.value.trim();
-      const blob = await compresser(source, { plaque: c.plaque, ts, qui: c.auth.compte, phase: c.phase });
+      const blob = await compresser(source, { plaque: c.plaque, ts, qui: c.qui, phase: c.phase });
       if (!blob) throw new Error('image');
       await ajouter({ plaque: c.plaque, phase: c.phase, slot: v ? v.k : null, label, prise: ts, blob, creeLe: ts });
       const miniature = h('img', { class: 'pv-mini', alt: label || 'Photo', src: URL.createObjectURL(blob) });
@@ -85,7 +85,7 @@ export async function ouvrirPrise(racine, c, retour, synchro) {
       if (!guide) legende.value = '';
       info.textContent = envoyees + ' photo' + (envoyees > 1 ? 's' : '') + ' enregistrée' + (envoyees > 1 ? 's' : '') + ' sur ce téléphone, envoi en cours';
       majVue();
-      vider(c.auth).then((r) => { synchro(r); if (r === 'ok') info.textContent = envoyees + ' photo' + (envoyees > 1 ? 's' : '') + ' envoyée' + (envoyees > 1 ? 's' : ''); else if (r === 'reseau') info.textContent = 'Réseau indisponible : les photos seront envoyées dès le retour de la connexion.'; });
+      vider().then((r) => { synchro(r); if (r === 'ok') info.textContent = envoyees + ' photo' + (envoyees > 1 ? 's' : '') + ' envoyée' + (envoyees > 1 ? 's' : ''); else if (r === 'reseau') info.textContent = 'Réseau indisponible : les photos seront envoyées dès le retour de la connexion.'; });
       if (guide && !vueCourante()) { info.textContent = 'Toutes les vues demandées sont prises.'; }
     } catch { info.textContent = 'La photo n’a pas pu être prise, réessayer.'; }
     finally { occupe = false; majVue(); }

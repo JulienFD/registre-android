@@ -93,3 +93,24 @@ test('chaque serveur a son propre stockage en mémoire', async () => {
     assert.deepEqual(etat.photos, []);
   });
 });
+
+test('la session persistante fonctionne de bout en bout : ouverture, accès avec le jeton, rafraîchissement, fermeture', async () => {
+  await avecServeur(async (base) => {
+    const post = (chemin, corps) => fetch(base + chemin, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) });
+    const faux = await post('/api/session', { compte: COMPTE_DEMO, mdp: 'mauvais' });
+    assert.equal(faux.status, 401);
+    assert.equal(faux.headers.get('www-authenticate'), null);
+
+    const ouverte = await (await post('/api/session', { compte: COMPTE_DEMO, mdp: MDP_DEMO })).json();
+    assert.equal(ouverte.ok, true);
+    const avecJeton = await fetch(base + '/api/photos?plaque=AB123CD&vue=etat', { headers: { Authorization: 'Bearer ' + ouverte.access } });
+    assert.equal(avecJeton.status, 200);
+
+    const rafraichie = await (await post('/api/session?action=refresh', { refresh: ouverte.refresh })).json();
+    assert.equal(rafraichie.ok, true);
+    assert.notEqual(rafraichie.access, undefined);
+
+    assert.equal((await post('/api/session?action=quitter', { refresh: ouverte.refresh })).status, 200);
+    assert.equal((await post('/api/session?action=refresh', { refresh: ouverte.refresh })).status, 401);
+  });
+});
