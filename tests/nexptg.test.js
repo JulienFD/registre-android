@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { lireSynchro } = require('../www/nexptg.js');
+const { lireSynchro, etatNexptg, candidats, demandeTermine, versionAjouter, libelleElement, libelleZone, libelleRoue, libelleSaison, lireRapport, statsElement } = require('../www/nexptg.js');
 
 const fixture = (nom) => fs.readFileSync(path.join(__dirname, 'fixtures', nom), 'utf8');
 const rapport = () => lireSynchro(fixture('nexptg-rapport.json')).rapports[0];
@@ -168,4 +168,153 @@ test('une entrée qui n\'est pas une synchro NexPTG est refusée', () => {
 
 test('une synchro sans historique ni rapports est tolérée', () => {
   assert.deepEqual(lireSynchro({ data: {} }), { historique: [], rapports: [] });
+});
+
+// --- état NexPTG d'un dossier ---
+
+const env = (sha, recu, extra) => Object.assign({ sha256: sha, recu, cle: 'S#1#100', par: 'elwen', plaque: 'AB123CD', brut: {} }, extra);
+
+test('un dossier sans mesures est en attente et bloque la signature', () => {
+  const e = etatNexptg({}, []);
+  assert.equal(e.statut, 'attente');
+  assert.equal(e.ok, false);
+  assert.equal(e.derniere, null);
+});
+
+test('« Commencer les mesures » place le dossier en cours, sans le débloquer', () => {
+  const e = etatNexptg({ nexptg: { qui: 'elwen', debutAt: 1000 } }, []);
+  assert.equal(e.statut, 'mesures');
+  assert.equal(e.ok, false);
+});
+
+test('un rapport reçu valide le dossier ; la dernière version reçue est celle affichée', () => {
+  const e = etatNexptg({ nexptg: { qui: 'elwen', debutAt: 1000 } }, [env('a', 2000), env('c', 4000), env('b', 3000)]);
+  assert.equal(e.statut, 'recu');
+  assert.equal(e.ok, true);
+  assert.equal(e.derniere.sha256, 'c');
+});
+
+test('« Terminé » avec un motif valide le dossier, sans rapport', () => {
+  const termine = { at: 5000, motif: 'Appareil en panne, mesures prises à la main', par: 'elwen' };
+  const e = etatNexptg({ nexptg: { qui: 'elwen', termine } }, []);
+  assert.equal(e.statut, 'termine');
+  assert.equal(e.ok, true);
+  assert.deepEqual(e.termine, termine);
+});
+
+test('un rapport reçu prime sur « Terminé »', () => {
+  const e = etatNexptg({ nexptg: { termine: { at: 1, motif: 'x'.repeat(10), par: 'elwen' } } }, [env('a', 2000)]);
+  assert.equal(e.statut, 'recu');
+});
+
+test('un « Terminé » sans motif exploitable ne valide rien', () => {
+  for (const termine of [{ at: 1, motif: '', par: 'e' }, { at: 1, motif: '  ', par: 'e' }, { at: 1 }, null, 'oui']) {
+    assert.equal(etatNexptg({ nexptg: { termine } }, []).ok, false, JSON.stringify(termine));
+  }
+});
+
+// --- « Terminé » avec confirmation et motif obligatoire ---
+
+test('demandeTermine exige un motif d\'au moins 5 caractères et l\'enregistre horodaté', () => {
+  const r = demandeTermine({ motif: '  Appareil en panne  ', par: 'elwen', maintenant: 7000 });
+  assert.deepEqual(r, { ok: true, termine: { at: 7000, motif: 'Appareil en panne', par: 'elwen' } });
+});
+
+test('demandeTermine refuse un motif vide, trop court ou démesuré', () => {
+  for (const motif of ['', '   ', 'abc', undefined, 'x'.repeat(301)]) {
+    assert.deepEqual(demandeTermine({ motif, par: 'elwen', maintenant: 1 }), { ok: false, erreur: 'motif' }, String(motif));
+  }
+});
+
+// --- rapports à proposer parmi ceux du relais ---
+
+const rap = (extra) => Object.assign({
+  cle: 'S#1#100', plaque: 'AB123CD', par: 'elwen', recu: 2000000, reclame: null,
+  brut: { date: 2000 }, // 2 000 s = 2 000 000 ms
+}, extra);
+const BASE = { plaque: 'ab-123-cd', dossierId: '2026-10-13-AB123CD', creeLe: 1000000, par: 'elwen' };
+
+test('un rapport libre, de la bonne plaque et postérieur au dossier est proposé', () => {
+  assert.deepEqual(candidats(Object.assign({ rapports: [rap()] }, BASE)).map((r) => r.cle), ['S#1#100']);
+});
+
+test('un rapport déjà réclamé par un autre dossier n\'est jamais proposé', () => {
+  const pris = rap({ reclame: { dossier: 'AUTRE', par: 'tablette', recu: 1 } });
+  assert.deepEqual(candidats(Object.assign({ rapports: [pris] }, BASE)), []);
+});
+
+test('un rapport déjà réclamé par ce dossier reste proposé (reprise après coupure)', () => {
+  const mien = rap({ reclame: { dossier: BASE.dossierId, par: 'tablette', recu: 1 } });
+  assert.equal(candidats(Object.assign({ rapports: [mien] }, BASE)).length, 1);
+});
+
+test('seuls les rapports du technicien choisi sont proposés', () => {
+  const autre = rap({ cle: 'S#2#100', par: 'julien' });
+  assert.deepEqual(candidats(Object.assign({ rapports: [rap(), autre] }, BASE)).map((r) => r.par), ['elwen']);
+});
+
+test('un rapport créé avant le dossier est écarté, avec 10 minutes de tolérance sur les horloges', () => {
+  const avant = rap({ cle: 'S#3#100', brut: { date: 1000 - 11 * 60 } });   // 11 min avant la création
+  const proche = rap({ cle: 'S#4#100', brut: { date: 1000 - 5 * 60 } });  // 5 min avant : toléré
+  const noms = candidats(Object.assign({ rapports: [avant, proche] }, BASE)).map((r) => r.cle);
+  assert.deepEqual(noms, ['S#4#100']);
+});
+
+test('la plaque doit correspondre, quelle que soit sa mise en forme', () => {
+  const autre = rap({ cle: 'S#5#100', plaque: 'ZZ999ZZ' });
+  assert.deepEqual(candidats(Object.assign({ rapports: [rap(), autre] }, BASE)).map((r) => r.cle), ['S#1#100']);
+});
+
+test('les candidats sont triés du plus récent au plus ancien, plusieurs candidats ne sont pas départagés', () => {
+  const a = rap({ cle: 'S#6#100', recu: 3000000 });
+  const b = rap({ cle: 'S#7#100', recu: 5000000 });
+  assert.deepEqual(candidats(Object.assign({ rapports: [a, rap(), b] }, BASE)).map((r) => r.cle), ['S#7#100', 'S#6#100', 'S#1#100']);
+});
+
+// --- versions déjà stockées ---
+
+test('versionAjouter signale une version du relais absente du dossier', () => {
+  assert.equal(versionAjouter(rap({ sha256: 'n' }), [env('a', 1)]), true);
+  assert.equal(versionAjouter(rap({ sha256: 'a' }), [env('a', 1)]), false);
+  assert.equal(versionAjouter(rap({ sha256: 'a' }), []), true);
+});
+
+// --- libellés et statistiques pour l'affichage ---
+
+test('les éléments NexPTG ont un libellé français, un type inconnu garde son nom brut', () => {
+  assert.equal(libelleElement('LEFT_FRONT_FENDER'), 'Aile avant gauche');
+  assert.equal(libelleElement('RIGHT_REAR_DOOR'), 'Porte arrière droite');
+  assert.equal(libelleElement('HOOD'), 'Capot');
+  assert.equal(libelleElement('ENGINE_COMPARTMENT'), 'Compartiment moteur');
+  assert.equal(libelleElement('SOMETHING_NEW'), 'SOMETHING_NEW');
+});
+
+test('les zones ont un libellé français', () => {
+  assert.deepEqual(['left', 'right', 'top', 'back'].map(libelleZone), ['Côté gauche', 'Côté droit', 'Haut', 'Dos']);
+  assert.equal(libelleZone('autre'), 'autre');
+});
+
+test('statsElement calcule minimum, maximum, moyenne et nombre de mesures ignorées', () => {
+  const el = rapport().externe[0].elements[0]; // 193, 195, 258, 1609 (Fe)
+  assert.deepEqual(statsElement(el.valeurs), { n: 4, min: 193, max: 1609, moyenne: 564, ignorees: 0 });
+});
+
+test('statsElement ne compte pas les mesures ignorées dans les statistiques', () => {
+  const el = rapportPartiel().externe[2].elements[0]; // capot : 70, 71, 73, 74, 74
+  assert.deepEqual(statsElement(el.valeurs), { n: 5, min: 70, max: 74, moyenne: 72, ignorees: 0 });
+  const roof = rapportPartiel().externe[2].elements[1]; // toit : 5 mesures ignorées
+  assert.deepEqual(statsElement(roof.valeurs), { n: 0, min: null, max: null, moyenne: null, ignorees: 5 });
+});
+
+test('les roues et saisons ont un libellé français, une valeur inconnue garde son texte', () => {
+  assert.deepEqual(['Left front', 'Right front', 'Left rear', 'Right rear'].map(libelleRoue), ['Avant gauche', 'Avant droite', 'Arrière gauche', 'Arrière droite']);
+  assert.equal(libelleRoue('Spare'), 'Spare');
+  assert.equal(libelleSaison('All season'), 'Toute la saison');
+  assert.equal(libelleSaison('Mud'), 'Mud');
+});
+
+test('lireRapport normalise un rapport brut seul, comme lireSynchro', () => {
+  const brut = fixture('nexptg-rapport-champ.json');
+  const seul = lireRapport(JSON.parse(brut).data.reports[0]);
+  assert.deepEqual(seul, lireSynchro(brut).rapports[0]);
 });

@@ -94,7 +94,94 @@
     return { historique: tableau(d.history).map(historique), rapports: tableau(d.reports).map(rapport) };
   }
 
-  var Nexptg = { lireSynchro: lireSynchro };
+  /* ---- état NexPTG d'un dossier ---- */
+
+  var TOLERANCE_HORLOGES = 10 * 60 * 1000; // la date du rapport vient du téléphone, celle du dossier de la tablette
+  var MOTIF_MIN = 5;
+  var MOTIF_MAX = 300;
+
+  function derniereVersion(versions) {
+    return tableau(versions).slice().sort(function (a, b) { return (b.recu - a.recu) || (a.sha256 < b.sha256 ? -1 : 1); })[0] || null;
+  }
+
+  function termineValide(t) {
+    return !!t && typeof t === 'object' && typeof t.motif === 'string' && t.motif.trim().length >= MOTIF_MIN;
+  }
+
+  // Statut : attente, mesures (en cours), recu, termine. `ok` = la section NexPTG est satisfaite (déblocage de la signature).
+  function etatNexptg(dossier, versions) {
+    var nx = (dossier && dossier.nexptg) || {};
+    var derniere = derniereVersion(versions);
+    if (derniere) return { statut: 'recu', ok: true, derniere: derniere, termine: null, nbVersions: tableau(versions).length };
+    if (termineValide(nx.termine)) return { statut: 'termine', ok: true, derniere: null, termine: nx.termine, nbVersions: 0 };
+    return { statut: nx.debutAt ? 'mesures' : 'attente', ok: false, derniere: null, termine: null, nbVersions: 0 };
+  }
+
+  // « Terminé » sans rapport : un motif écrit est obligatoire (sortie de secours, donc tracée).
+  function demandeTermine(o) {
+    var motif = typeof o.motif === 'string' ? o.motif.trim() : '';
+    if (motif.length < MOTIF_MIN || motif.length > MOTIF_MAX) return { ok: false, erreur: 'motif' };
+    return { ok: true, termine: { at: o.maintenant, motif: motif, par: o.par } };
+  }
+
+  // Rapports du relais pouvant être rattachés au dossier. Plusieurs candidats : l'appelant demande, il ne devine jamais.
+  function candidats(o) {
+    var plaque = Utils.normPlate(o.plaque);
+    var tolerance = o.tolerance === undefined ? TOLERANCE_HORLOGES : o.tolerance;
+    return tableau(o.rapports).filter(function (r) {
+      if (!r || Utils.normPlate(r.plaque) !== plaque) return false;
+      if (r.reclame && r.reclame.dossier !== o.dossierId) return false;
+      if (o.par && r.par !== o.par) return false;
+      var creation = enMs(r.brut && r.brut.date);
+      return creation >= o.creeLe - tolerance;
+    }).sort(function (a, b) { return b.recu - a.recu; });
+  }
+
+  // Vrai si la version du relais n'est pas encore dans le dossier.
+  function versionAjouter(rapportRelais, versionsLocales) {
+    return !tableau(versionsLocales).some(function (v) { return v.sha256 === rapportRelais.sha256; });
+  }
+
+  /* ---- libellés et statistiques d'affichage ---- */
+
+  var ELEMENTS = {
+    LEFT_FRONT_FENDER: 'Aile avant gauche', LEFT_FRONT_DOOR: 'Porte avant gauche', LEFT_REAR_DOOR: 'Porte arrière gauche',
+    LEFT_PILLAR: 'Montant gauche', LEFT_REAR_FENDER: 'Aile arrière gauche',
+    RIGHT_FRONT_FENDER: 'Aile avant droite', RIGHT_FRONT_DOOR: 'Porte avant droite', RIGHT_REAR_DOOR: 'Porte arrière droite',
+    RIGHT_PILLAR: 'Montant droit', RIGHT_REAR_FENDER: 'Aile arrière droite',
+    HOOD: 'Capot', ROOF: 'Toit', TRUNK: 'Coffre ou hayon',
+    LEFT_SIDE: 'Intérieur côté gauche', RIGHT_SIDE: 'Intérieur côté droit',
+    ENGINE_COMPARTMENT: 'Compartiment moteur', TRUNK_INSIDE: 'Intérieur du coffre',
+  };
+  var ZONES = { left: 'Côté gauche', right: 'Côté droit', top: 'Haut', back: 'Dos' };
+  var ROUES = { 'Left front': 'Avant gauche', 'Right front': 'Avant droite', 'Left rear': 'Arrière gauche', 'Right rear': 'Arrière droite' };
+  var SAISONS = { 'All season': 'Toute la saison', Summer: 'Été', Winter: 'Hiver' };
+
+  // Un type ou une zone inconnus gardent leur nom brut : rien n'est masqué.
+  function libelleElement(type) { return ELEMENTS[type] || type; }
+  function libelleZone(zone) { return ZONES[zone] || zone; }
+  function libelleRoue(section) { return ROUES[section] || section; }
+  function libelleSaison(saison) { return SAISONS[saison] || saison; }
+
+  // Les mesures ignorées (valeur nulle) ne comptent pas dans les statistiques.
+  function statsElement(valeurs) {
+    var nums = tableau(valeurs).map(function (v) { return v.valeur; }).filter(function (n) { return n !== null; });
+    var somme = nums.reduce(function (a, b) { return a + b; }, 0);
+    return {
+      n: nums.length,
+      min: nums.length ? Math.min.apply(null, nums) : null,
+      max: nums.length ? Math.max.apply(null, nums) : null,
+      moyenne: nums.length ? Math.round(somme / nums.length) : null,
+      ignorees: tableau(valeurs).length - nums.length,
+    };
+  }
+
+  var Nexptg = {
+    lireSynchro: lireSynchro, etatNexptg: etatNexptg, demandeTermine: demandeTermine,
+    candidats: candidats, versionAjouter: versionAjouter,
+    libelleElement: libelleElement, libelleZone: libelleZone, libelleRoue: libelleRoue, libelleSaison: libelleSaison,
+    statsElement: statsElement, lireRapport: function (brut) { return rapport(brut); },
+  };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = Nexptg;
   else root.Nexptg = Nexptg;
