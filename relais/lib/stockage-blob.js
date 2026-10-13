@@ -17,6 +17,29 @@ function stockageBlob() {
       }
     },
 
+    // Même contrat que ecrire, pour des octets (images). `contentType` : type MIME du fichier.
+    async ecrireOctets(chemin, octets, contentType) {
+      try {
+        await put(chemin, Buffer.from(octets), { access: 'private', contentType: contentType, allowOverwrite: false });
+        return 'cree';
+      } catch (erreur) {
+        const present = await get(chemin, { access: 'private', useCache: false });
+        if (!present) throw erreur;
+        if (present.stream) await present.stream.cancel();
+        return 'existe';
+      }
+    },
+
+    async lireOctets(chemin) {
+      const r = await get(chemin, { access: 'private', useCache: false });
+      if (!r) return null;
+      if (r.statusCode !== 200 || !r.stream) {
+        if (r.stream) await r.stream.cancel();
+        return null;
+      }
+      return new Uint8Array(await new Response(r.stream).arrayBuffer());
+    },
+
     async lister(prefixe) {
       const chemins = [];
       let curseur;
