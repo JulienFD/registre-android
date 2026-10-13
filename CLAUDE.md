@@ -4,8 +4,8 @@ App Android (Capacitor 8, WebView) de suivi des véhicules en atelier, pour une 
 
 ## Structure de `www/`
 
-- `index.html` charge les scripts classiques (`android-api.js`, `utils.js`) puis le module `js/main.js`.
-- `js/` : modules ES natifs, sans bundler. `constants.js` (données), `core.js` (état `S`, sauvegarde, utilitaires), `board.js` (tableau), `sheet.js` (fiche et onglets), `compl.js`, `dossier.js` (création, verrouillage), `photos.js`, `camera.js`, `pin.js`, `pdf.js`, `actions.js` (clics), `main.js` (événements et démarrage).
+- `index.html` charge les scripts classiques (`android-api.js`, `utils.js`, `nexptg.js`, `nexptg-vue.js`, `sauvegarde.js`, `relais.js`) puis le module `js/main.js`. Ces scripts sont de la logique pure (sans DOM), couverte par `tests/` ; `nexptg-vue.js` produit le HTML de l'onglet NexPTG à partir d'un état.
+- `js/` : modules ES natifs, sans bundler. `constants.js` (données), `core.js` (état `S`, sauvegarde, utilitaires), `board.js` (tableau), `sheet.js` (fiche et onglets), `compl.js`, `dossier.js` (création, verrouillage), `photos.js`, `camera.js`, `pin.js`, `pdf.js`, `nexptg-tab.js` (onglet NexPTG : relais, enregistrement, actions), `actions.js` (clics), `main.js` (événements et démarrage).
 - `css/` : une feuille par zone (`base`, `sheet`, `fonts`, `modal`, `camera`, `lock`), chargées dans cet ordre par `index.html` (l'ordre compte pour la cascade).
 - Un nouveau code va dans le module de sa responsabilité ; ne pas recréer un fichier fourre-tout. Un module qui dépasse environ 300 lignes se redécoupe.
 

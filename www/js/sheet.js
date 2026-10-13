@@ -1,6 +1,7 @@
 import { tabCompl } from './compl.js';
 import { CAM, PLAQUE, CHECK, COLS, DMG, PANELS, SLOTS, SORTIE_REQ, TYPES, VIEWS } from './constants.js';
 import { $, S, V, VV, esc, fmtD, fmtDT, isLocked, limTxt, entryErrors, plateHtml, plateKindOf, RULES, srcOf, todayISO } from './core.js';
+import { nexptgHtml, nexptgMonter } from './nexptg-tab.js';
 import { entrySet, exitSet } from './photos.js';
 
 function lockWrap(html, area) { return '<fieldset class="lockfs"' + (isLocked(VV(), area) ? ' disabled' : '') + '>' + html + '</fieldset>' }
@@ -21,6 +22,7 @@ export function readiness(v) {
     { t: 'Informations', ok: !entryErrors(v).length, tab: 'infos' },
     { t: 'Photos ' + np + '/' + SLOTS.length, ok: np === SLOTS.length, tab: 'photos' },
     { t: 'Contrôle ' + nc + '/' + CHECK.length, ok: nc === CHECK.length, tab: 'dom' },
+    { t: 'NexPTG', ok: window.Nexptg.etatNexptg(v, S.nm[v.id] || []).ok, tab: 'mes' },
     { t: 'Signatures', ok: !!v.sigRecep && (!!v.sigClient || !!v.clientAbsent), tab: 'sign' }
   ];
 }
@@ -135,7 +137,8 @@ function mesBody() {
 }
 function tabMes(v) {
   var mes = v.mes || {};
-  return '<div class="sec"><h3>Analyse NexDiag</h3><div id="pg-mes" class="vlist">' + mesBody() + '</div></div>' +
+  return '<div id="pg-nx">' + nexptgHtml(v) + '</div>' +
+    '<div class="sec"><h3>Analyse NexDiag</h3><div id="pg-mes" class="vlist">' + mesBody() + '</div></div>' +
     '<div class="sec"><h3>Épaisseurs relevées à la main</h3><p class="hint">Facultatif, en microns. Utile quand le PDF de l’appareil n’est pas disponible.</p><div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
     PANELS.map(function (p) { return '<label class="fld"><span>' + p[1] + '</span><input type="text" inputmode="numeric" maxlength="4" data-mesk="' + p[0] + '" value="' + esc(mes[p[0]] == null ? '' : mes[p[0]]) + '" placeholder="µm"></label>' }).join('') + '</div></div>' +
     '<div class="sec"><h3>Notes d’analyse</h3>' + area('mesNotes', 'Remarques (zones repeintes, valeurs suspectes, conseils au client)', { rows: 4 }) + '</div>';
@@ -149,6 +152,10 @@ function sigBlock(field, title, defName) {
       '<div class="seg"><button class="btn" data-act="clearpad" data-f="' + field + '">Effacer</button><button class="btn pri" data-act="savesig" data-f="' + field + '">Enregistrer la signature</button></div>') + '</div>';
 }
 function tabSign0(v) {
+  /* Les mesures NexPTG précèdent la signature ; un dossier déjà signé reste consultable. */
+  if (!window.Nexptg.etatNexptg(v, S.nm[v.id] || []).ok && !v.sigRecep && !v.sigClient) {
+    return '<div class="banner">Les mesures NexPTG doivent être validées avant de signer.</div><div class="seg"><button class="btn pri" data-act="tab" data-v="mes">Aller à l’onglet NexPTG</button></div>';
+  }
   return '<div class="banner">Le réceptionnaire et le client signent après avoir relu les informations, les dommages relevés et le travail à réaliser.</div>' +
     sigBlock('sigRecep', 'Signature du réceptionnaire', v.recep) +
     '<label class="tgl sec"><input type="checkbox" id="f-ca" data-f="clientAbsent"' + (v.clientAbsent ? ' checked' : '') + '> Client absent à l’arrivée du véhicule (pas de signature client)</label>' +
@@ -180,7 +187,7 @@ function sheetHead(v) {
   if (S.cur && v.statut && v.statut !== 'brouillon' && v.statut !== 'sorti') {
     seg = '<div class="seg">' + COLS.slice(1).map(function (c) { return '<button class="btn sm' + (v.statut === c[0] ? ' on' : '') + '" data-act="status" data-v="' + c[0] + '">' + c[1] + '</button>' }).join('') + '</div>';
   }
-  var nc = S.cur ? (S.cm[S.cur] || []).length : 0; var tabs = [['infos', 'Informations'], ['photos', 'Photos'], ['dom', 'Dommages et contrôle'], ['mes', 'Mesures'], ['sign', 'Signatures'], ['compl', 'Compléments' + (nc ? ' (' + nc + ')' : '')], ['sortie', 'Sortie']];
+  var nc = S.cur ? (S.cm[S.cur] || []).length : 0; var tabs = [['infos', 'Informations'], ['photos', 'Photos'], ['dom', 'Dommages et contrôle'], ['mes', 'NexPTG'], ['sign', 'Signatures'], ['compl', 'Compléments' + (nc ? ' (' + nc + ')' : '')], ['sortie', 'Sortie']];
   if (!S.cur) tabs = [['infos', 'Informations']];
   return '<div class="sh"><div class="shin"><div class="shrow"><button class="btn" data-act="close">← Tableau</button>' +
     '<div class="ttl">' + plateHtml(v.plaque || '') + '<div>' + esc([v.marque, v.modele].filter(Boolean).join(' ') || 'Nouvelle entrée') + (t ? ' · ' + esc(t.l) : '') + '</div></div>' + seg +
@@ -209,6 +216,7 @@ export function renderSheet(keepScroll) {
   sh.hidden = false; document.documentElement.style.overflow = 'hidden';
   sh.scrollTop = y;
   mountPads();
+  if (S.tab === 'mes') nexptgMonter(v);
 }
 /* Marque en rouge les champs obligatoires vides, ouvre l'onglet Informations et amène le premier à l'écran. */
 export function showMissing(keys) {
