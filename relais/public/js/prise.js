@@ -12,7 +12,7 @@ export async function ouvrirPrise(racine, c, retour, synchro) {
   const guide = c.phase === 'entree' || c.phase === 'sortie';
   const file = guide ? manquants(c.etat, c.phase) : [];
   const pris = new Set(((c.etat && c.etat.photos) || []).filter((p) => p.phase === c.phase && p.slot).map((p) => p.slot));
-  let idx = 0, envoyees = 0, camera = null, occupe = false, natif = false;
+  let idx = 0, envoyees = 0, camera = null, occupe = false, natif = false, ferme = false;
 
   const video = h('video', { class: 'pv-video', playsinline: true, muted: true, autoplay: true });
   const titre = h('div', { class: 'pv-titre' });
@@ -36,8 +36,31 @@ export async function ouvrirPrise(racine, c, retour, synchro) {
     legende.hidden = guide;
   }
 
-  async function arreterCamera() { if (camera) { camera.arreter(); camera = null; } }
-  async function fin() { await arreterCamera(); retour(); }
+  function arreterCamera() { if (camera) { camera.arreter(); camera = null; } }
+
+  // La caméra ne reste allumée que sur cet écran et au premier plan : coupée en quittant, en arrière-plan, ou si elle démarre trop tard.
+  async function lancerCamera() {
+    try {
+      const c2 = await demarrer(video);
+      if (ferme || document.hidden) c2.arreter(); else camera = c2;
+    } catch {
+      natif = true;
+      video.hidden = true;
+      info.textContent = 'Caméra intégrée indisponible : chaque photo ouvrira l’appareil photo du téléphone.';
+    }
+  }
+  async function surVisibilite() {
+    if (ferme) return;
+    if (document.hidden) arreterCamera();
+    else if (!camera && !natif) await lancerCamera();
+  }
+  document.addEventListener('visibilitychange', surVisibilite);
+  async function fin() {
+    ferme = true;
+    document.removeEventListener('visibilitychange', surVisibilite);
+    arreterCamera();
+    retour();
+  }
 
   async function prendre() {
     if (occupe || (guide && !vueCourante())) return;
@@ -75,9 +98,5 @@ export async function ouvrirPrise(racine, c, retour, synchro) {
     h('div', { class: 'pv-actions' }, passer, declencheur, terminer)));
   majVue();
 
-  try { camera = await demarrer(video); } catch {
-    natif = true;
-    video.hidden = true;
-    info.textContent = 'Caméra intégrée indisponible : chaque photo ouvrira l’appareil photo du téléphone.';
-  }
+  await lancerCamera();
 }
