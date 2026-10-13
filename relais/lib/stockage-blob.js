@@ -1,10 +1,10 @@
 'use strict';
 // Stockage dans un store Vercel Blob PRIVÉ (jamais d'URL publique). Non couvert par les tests : réseau et identifiants requis.
-const { put, get } = require('@vercel/blob');
+const { put, get, list, del } = require('@vercel/blob');
 
 function stockageBlob() {
   return {
-    // « cree » si le fichier est nouveau, « existe » s'il était déjà là (même empreinte, donc même contenu).
+    // « cree » si le fichier est nouveau, « existe » s'il était déjà là (écrasement refusé par le SDK).
     async ecrire(chemin, objet) {
       try {
         await put(chemin, JSON.stringify(objet), { access: 'private', contentType: 'application/json', allowOverwrite: false });
@@ -15,6 +15,32 @@ function stockageBlob() {
         if (present.stream) await present.stream.cancel();
         return 'existe';
       }
+    },
+
+    async lister(prefixe) {
+      const chemins = [];
+      let curseur;
+      do {
+        const page = await list({ prefix: prefixe, cursor: curseur });
+        page.blobs.forEach((b) => chemins.push(b.pathname));
+        curseur = page.hasMore ? page.cursor : undefined;
+      } while (curseur);
+      return chemins;
+    },
+
+    // Contenu JSON, ou null si le fichier n'existe pas. useCache:false : une lecture juste après écriture doit voir la dernière version.
+    async lire(chemin) {
+      const r = await get(chemin, { access: 'private', useCache: false });
+      if (!r) return null;
+      if (r.statusCode !== 200 || !r.stream) {
+        if (r.stream) await r.stream.cancel();
+        return null;
+      }
+      return JSON.parse(await new Response(r.stream).text());
+    },
+
+    async supprimer(chemin) {
+      await del(chemin);
     },
   };
 }

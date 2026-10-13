@@ -9,10 +9,18 @@ Ce dossier est déployé séparément de l'app Android (Root Directory `relais` 
 |---|---|
 | `POST /api/nexptg` | Reçoit la synchronisation NexPTG (Basic auth), la lit, la stocke dans un Blob **privé** |
 
+| `GET /api/rapports?plaque=AB123CD[&par=julien]` | Liste les rapports d'une plaque (dernière version reçue, versions précédentes listées). `plaque=_sans-plaque` : rapports sans immatriculation |
+| `POST /api/rapports` | Réclame un rapport pour un dossier : `{"cle", "plaque", "dossier"}` ; `409` s'il l'est déjà par un autre dossier |
+| `DELETE /api/rapports?cle=…&dossier=…` | Libère une réclamation (seul le dossier qui l'a faite) |
+
+La lecture est réservée aux comptes listés dans `RELAIS_LECTEURS` ; les comptes des techniciens (NexPTG) ne peuvent qu'envoyer.
+Toutes les réponses de lecture portent `Cache-Control: private, no-store`.
+
 Stockage (JSON, nom de fichier = SHA-256 du contenu, donc un renvoi identique est sans effet et une version modifiée s'ajoute) :
 
 - `rapports/<PLAQUE>/<sha256>.json` : un rapport, avec son contenu d'origine intact (`brut`), le compte, la date de réception et les avertissements. `_sans-plaque` quand le champ « Immatriculation » est absent ou inexploitable.
 - `historique/<compte>/<sha256>.json` : les mesures libres du mode « Général ».
+- `reclamations/<sha256 de la clé>.json` : le dossier auquel un rapport est rattaché. La clé d'un rapport est `série#id#date de création` : elle ne change pas quand le rapport est modifié, donc toutes ses versions suivent le même dossier. L'ordre des versions se fait sur la date de **réception**, jamais sur la `date` du rapport (qui reste celle de la création).
 
 Réponses : `200` après stockage durable seulement, `401` authentification, `405` méthode, `413` corps > 2 Mo, `422` corps illisible, `500` stockage indisponible.
 
@@ -26,7 +34,8 @@ Réponses : `200` après stockage durable seulement, `401` authentification, `40
    node relais/scripts/creer-compte.js julien
    ```
    Le script affiche un mot de passe aléatoire (à saisir dans NexPTG, non conservé) et une entrée à copier dans la variable d'environnement `RELAIS_COMPTES` du projet. Plusieurs comptes : les séparer par `;`.
-4. **Déployer**, puis dans NexPTG : adresse `https://<projet>.vercel.app/api/nexptg`, identifiant et mot de passe du compte.
+4. **Compte de la tablette** (lecture seule du côté des rapports) : créer un compte `tablette` avec le même script, l'ajouter à `RELAIS_COMPTES`, puis définir `RELAIS_LECTEURS=tablette`. Ne pas lui donner à NexPTG : un compte lecteur n'a pas à saisir de mesures.
+5. **Déployer**, puis dans NexPTG : adresse `https://<projet>.vercel.app/api/nexptg`, identifiant et mot de passe du compte.
 
 ## Vérification
 
@@ -46,5 +55,5 @@ Depuis la racine du dépôt. `-u julien` seul fait demander le mot de passe, qui
 ## Limites connues
 
 - Pas de limitation de débit ni de blocage après échecs : le mot de passe aléatoire (24 caractères) rend l'essai exhaustif irréaliste, mais à ajouter si l'adresse est largement diffusée.
-- Pas encore de lecture ni de purge : la récupération par la tablette et la suppression à la sortie sont les livrables suivants.
+- Pas encore de purge : la suppression à la sortie et le nettoyage quotidien sont les livrables suivants.
 - Les quotas du plan Hobby (stockage Blob, transferts) sont à vérifier sur la page d'usage de Vercel.

@@ -31,6 +31,12 @@ function lireComptes(texte) {
   return comptes;
 }
 
+// Comptes autorisés à LIRE (la tablette) : liste de noms séparés par « , » ou « ; ». Vide = personne.
+function lireLecteurs(texte) {
+  const noms = String(texte || '').split(/[;,]/).map((n) => n.trim()).filter((n) => NOM.test(n));
+  return new Set(noms);
+}
+
 // Renvoie le nom du compte, ou null. Le calcul est fait même pour un compte inconnu (temps constant).
 function verifierBasic(entete, comptes) {
   const m = /^Basic\s+([A-Za-z0-9+/=]+)$/i.exec(String(entete || '').trim());
@@ -47,4 +53,4 @@ function verifierBasic(entete, comptes) {
   return compte && egal ? nom : null;
 }
 
-module.exports = { creerCompte, lireComptes, verifierBasic };
+module.exports = { creerCompte, lireComptes, lireLecteurs, verifierBasic };
