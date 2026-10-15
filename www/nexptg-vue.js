@@ -118,8 +118,8 @@
 
   function svgVue(vue, point) {
     var formes = vue.elements.map(function (e) {
-      var f = e.forme;
-      return '<rect class="nx-el ' + e.tint + '" x="' + f.x + '" y="' + f.y + '" width="' + f.w + '" height="' + f.h + '" rx="' + f.rx + '"><title>' + esc(e.libelle) + '</title></rect>';
+      var pts = e.contour.map(function (q) { return q[0] + ',' + q[1]; }).join(' ');
+      return '<polygon class="nx-el ' + e.tint + '" points="' + pts + '"><title>' + esc(e.libelle) + '</title></polygon>';
     }).join('');
     var points = vue.elements.map(function (e) {
       return e.points.map(function (p) {

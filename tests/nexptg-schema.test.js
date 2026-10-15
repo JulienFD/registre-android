@@ -106,8 +106,8 @@ test('chaque vue expose ses silhouettes en primitives (polygones, cercles, recta
   for (const v of s.externe.concat(s.interne)) {
     assert.ok(v.decorFormes.length > 0, v.id);
     for (const f of v.decorFormes) {
-      assert.ok(['caisse', 'vitre', 'roue'].includes(f.role), v.id + ' rôle ' + f.role);
-      const pts = f.t === 'poly' ? f.pts : f.t === 'cercle' ? [[f.cx - f.r, f.cy - f.r], [f.cx + f.r, f.cy + f.r]] : [[f.x, f.y], [f.x + f.w, f.y + f.h]];
+      assert.ok(['caisse', 'vitre', 'montant', 'roue', 'jante', 'feu', 'trait'].includes(f.role), v.id + ' rôle ' + f.role);
+      const pts = f.t === 'poly' || f.t === 'trait' ? f.pts : f.t === 'cercle' ? [[f.cx - f.r, f.cy - f.r], [f.cx + f.r, f.cy + f.r]] : [[f.x, f.y], [f.x + f.w, f.y + f.h]];
       for (const [x, y] of pts) assert.ok(x >= -0.5 && y >= -0.5 && x <= v.w + 0.5 && y <= v.h + 0.5, v.id + ' primitive hors cadre');
     }
   }
@@ -134,11 +134,54 @@ test('le cadre de chaque vue entoure tout ce qui est dessiné, et recadre le vid
     assert.ok(c.x >= 0 && c.y >= 0 && c.x + c.w <= v.w + 0.5 && c.y + c.h <= v.h + 0.5, v.id + ' cadre hors schéma');
     const dedans = (x, y, r) => x - r >= c.x - 0.5 && x + r <= c.x + c.w + 0.5 && y - r >= c.y - 0.5 && y + r <= c.y + c.h + 0.5;
     for (const f of v.decorFormes) {
-      if (f.t === 'poly') f.pts.forEach(([x, y]) => assert.ok(dedans(x, y, 0), v.id + ' silhouette hors cadre'));
+      if (f.t === 'poly' || f.t === 'trait') f.pts.forEach(([x, y]) => assert.ok(dedans(x, y, 0), v.id + ' silhouette hors cadre'));
       else if (f.t === 'cercle') assert.ok(dedans(f.cx, f.cy, f.r), v.id + ' roue hors cadre');
     }
     for (const e of v.elements) for (const p of e.points) assert.ok(dedans(p.x, p.y, v.rayon), v.id + ' point ' + p.n + ' hors cadre');
   }
   const g = vueDe(s, 'ext-left');
   assert.ok(g.cadre.h < g.h * 0.85, 'la vue latérale n\'est pas recadrée');
+});
+
+const dansPoly = (x, y, pts) => {
+  let dedans = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) dedans = !dedans;
+  }
+  return dedans;
+};
+
+test('chaque élément a le contour réel de son panneau, et ses points tombent dedans', () => {
+  const s = complet();
+  for (const v of s.externe.concat(s.interne)) {
+    for (const e of v.elements) {
+      assert.ok(e.contour && e.contour.length >= 4, v.id + ' ' + e.type + ' sans contour');
+      for (const [x, y] of e.contour) assert.ok(x >= e.forme.x - 0.5 && x <= e.forme.x + e.forme.w + 0.5 && y >= e.forme.y - 0.5 && y <= e.forme.y + e.forme.h + 0.5, v.id + ' ' + e.type + ' contour hors de sa boîte');
+      for (const p of e.points) assert.ok(dansPoly(p.x, p.y, e.contour), v.id + ' ' + e.type + ' point ' + p.n + ' hors du contour');
+    }
+  }
+});
+
+test('les points reprennent la disposition de NexPTG : la porte avant a 3 points sur chaque bord et un au centre', () => {
+  const porte = elDe(vueDe(complet(), 'ext-left'), 'LEFT_FRONT_DOOR');
+  const [p1, p2, p3, p4, p5, p6, p7] = porte.points;
+  assert.ok(p1.y < p2.y && p2.y < p3.y, 'bord avant, de haut en bas');
+  assert.ok(p5.y < p6.y && p6.y < p7.y, 'bord arrière, de haut en bas');
+  assert.ok(p1.x < p4.x && p4.x < p5.x, 'le point 4 est au centre');
+});
+
+test('la porte arrière est derrière la porte avant, le montant suit le toit et l\'aile arrière est la plus en arrière', () => {
+  const v = vueDe(complet(), 'ext-left');
+  const cx = (t) => { const f = elDe(v, t).forme; return f.x + f.w / 2; };
+  assert.ok(cx('LEFT_FRONT_FENDER') < cx('LEFT_FRONT_DOOR') && cx('LEFT_FRONT_DOOR') < cx('LEFT_REAR_DOOR') && cx('LEFT_REAR_DOOR') < cx('LEFT_REAR_FENDER'));
+  const montant = elDe(v, 'LEFT_PILLAR').points;
+  assert.ok(montant[1].y < montant[0].y && montant[2].y < montant[3].y, 'le montant monte puis redescend avec le toit');
+});
+
+test('les schémas ont des roues détaillées : pneu, jante et rayons', () => {
+  const d = vueDe(complet(), 'ext-left').decorFormes;
+  assert.equal(d.filter((f) => f.role === 'roue').length, 2);
+  assert.equal(d.filter((f) => f.role === 'jante').length, 2);
+  assert.ok(d.filter((f) => f.t === 'trait').length >= 20, 'rayons, joints de portes, poignées');
 });

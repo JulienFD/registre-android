@@ -103,3 +103,11 @@ test('le plan reprend le cadre de chaque schéma, pour ne pas imprimer de vide',
   const g = complet().schemas.filter((s) => s.id === 'ext-left')[0];
   assert.ok(g.cadre.w > 0 && g.cadre.h > 0 && g.cadre.h < g.h);
 });
+
+test('chaque panneau du plan porte son contour réel, tracé par le PDF comme à l\'écran', () => {
+  const g = complet().schemas.filter((s) => s.id === 'ext-left')[0];
+  const porte = g.formes.filter((f) => f.type === 'LEFT_FRONT_DOOR')[0];
+  assert.ok(porte.pts.length >= 4);
+  assert.ok(g.decor.some((d) => d.t === 'trait'), 'joints, poignées et rayons');
+  assert.ok(g.decor.some((d) => d.role === 'jante'), 'roues détaillées');
+});

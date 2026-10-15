@@ -21,9 +21,9 @@
   function dt(ts) { return ts ? new Date(ts).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; }
   function nombre(n) { return n === null ? '–' : String(n); }
 
-  function formeVers(f, e) {
+  function formeVers(e) {
     var vide = e.tint === 'nx-t-vide', c = vide ? COULEURS.gris : couleurCode(e.tint);
-    return { type: e.type, x: f.x, y: f.y, w: f.w, h: f.h, rx: f.rx, fill: vide ? null : melange(c, 0.72), stroke: c, dash: vide };
+    return { type: e.type, pts: e.contour, fill: vide ? null : melange(c, 0.72), stroke: c, dash: vide };
   }
 
   // Plan de la synthèse : tout ce qui sera écrit ou tracé, sans aucune mise en page. `o` : recu, par, nbVersions, avertissements.
@@ -41,7 +41,7 @@
       return {
         id: vue.id, section: vue.section, titre: vue.titre, w: vue.w, h: vue.h, rayon: vue.rayon, cadre: vue.cadre,
         decor: vue.decorFormes,
-        formes: vue.elements.map(function (e) { return formeVers(e.forme, e); }),
+        formes: vue.elements.map(formeVers),
         points: vue.elements.reduce(function (acc, e) {
           return acc.concat(e.points.map(function (p) {
             var c = p.ignore ? COULEURS.gris : couleurCode(p.classe);
@@ -101,21 +101,25 @@
   function dessinerSchema(doc, s, x0, y0, k) {
     var pointille = function (on) { if (doc.setLineDashPattern) doc.setLineDashPattern(on ? [1, 0.8] : [], 0); };
     doc.setLineWidth(0.3);
+    var polygone = function (pts, mode) {
+      var rel = pts.slice(1).map(function (p, i) { return [(p[0] - pts[i][0]) * k, (p[1] - pts[i][1]) * k]; });
+      doc.lines(rel, x0 + pts[0][0] * k, y0 + pts[0][1] * k, [1, 1], mode, true);
+    };
+    var FONDS = { roue: COULEURS.roue, jante: COULEURS.blanc, vitre: [200, 222, 230], montant: [150, 160, 163], feu: [190, 195, 197], caisse: COULEURS.blanc };
     s.decor.forEach(function (d) {
-      var fond = d.role === 'roue' ? COULEURS.roue : d.role === 'vitre' ? COULEURS.blanc : COULEURS.clair;
-      doc.setFillColor(fond[0], fond[1], fond[2]); doc.setDrawColor(COULEURS.gris[0], COULEURS.gris[1], COULEURS.gris[2]);
+      var fond = FONDS[d.role] || COULEURS.blanc;
+      doc.setFillColor(fond[0], fond[1], fond[2]); doc.setDrawColor(COULEURS.encre[0], COULEURS.encre[1], COULEURS.encre[2]);
+      doc.setLineWidth(d.role === 'trait' ? 0.2 : 0.3);
       if (d.t === 'cercle') doc.circle(x0 + d.cx * k, y0 + d.cy * k, d.r * k, 'FD');
       else if (d.t === 'rect') doc.roundedRect(x0 + d.x * k, y0 + d.y * k, d.w * k, d.h * k, d.rx * k, d.rx * k, 'FD');
-      else {
-        var rel = d.pts.slice(1).map(function (p, i) { return [(p[0] - d.pts[i][0]) * k, (p[1] - d.pts[i][1]) * k]; });
-        doc.lines(rel, x0 + d.pts[0][0] * k, y0 + d.pts[0][1] * k, [1, 1], 'FD', true);
-      }
+      else if (d.t === 'trait') polygone(d.pts, 'S');
+      else polygone(d.pts, 'FD');
     });
     s.formes.forEach(function (f) {
       doc.setLineWidth(0.4); doc.setDrawColor(f.stroke[0], f.stroke[1], f.stroke[2]);
       pointille(f.dash);
-      if (f.fill) { doc.setFillColor(f.fill[0], f.fill[1], f.fill[2]); doc.roundedRect(x0 + f.x * k, y0 + f.y * k, f.w * k, f.h * k, f.rx * k, f.rx * k, 'FD'); }
-      else doc.roundedRect(x0 + f.x * k, y0 + f.y * k, f.w * k, f.h * k, f.rx * k, f.rx * k, 'D');
+      if (f.fill) { doc.setFillColor(f.fill[0], f.fill[1], f.fill[2]); polygone(f.pts, 'FD'); }
+      else polygone(f.pts, 'S');
       pointille(false);
     });
     var r = s.rayon * k;

@@ -201,3 +201,9 @@ test('en manuel, aucun choix de technicien : seulement le moyen de changer de mo
   assert.equal(/nxCommencer/.test(h), false);
   assert.match(h, /data-act="nxMode" data-mode="auto"/);
 });
+
+test('les panneaux sont dessinés avec leur contour réel, pas avec un rectangle', () => {
+  const h = rendre({}, [env()]);
+  assert.match(h, /<polygon class="nx-el nx-t-\d/);
+  assert.equal(/<rect class="nx-el/.test(h), false);
+});
