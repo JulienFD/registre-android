@@ -17,13 +17,14 @@ input[type=text],input[type=password]{min-height:52px;padding:0 14px;border-radi
 .erreur{margin:0;color:var(--bad);font-weight:600;min-height:1.2em}
 .file{margin-top:14px;padding:12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);display:flex;flex-direction:column;gap:8px}
 .file p{margin:0}
-.prise{display:flex;flex-direction:column;gap:8px;min-height:100dvh;padding:10px;max-width:760px;margin:0 auto}
+.prise{display:flex;flex-direction:column;gap:8px;height:100dvh;box-sizing:border-box;padding:10px;max-width:760px;margin:0 auto}
 .pv-tete{display:flex;gap:10px;align-items:center}
 .pv-textes{min-width:0}
 .pv-titre{font-size:22px;font-weight:700}
 .pv-sous{color:var(--ink2);font-size:14px}
-.pv-cadre{background:#000;border-radius:10px;overflow:hidden;aspect-ratio:4/3;max-height:70dvh;margin:0 auto;max-width:100%;display:flex;align-items:center;justify-content:center}
+.pv-cadre{background:#000;border-radius:10px;overflow:hidden;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
 .pv-video{width:100%;height:100%;object-fit:contain}
+.pv-cote{display:flex;flex-direction:column;gap:8px}
 .pv-info{min-height:1.4em;color:var(--ink2);font-size:14px}
 .pv-legende{width:100%}
 .pv-bande{display:flex;gap:6px;overflow-x:auto;min-height:64px}
@@ -31,3 +32,12 @@ input[type=text],input[type=password]{min-height:52px;padding:0 14px;border-radi
 .pv-actions{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:auto}
 .pv-declencheur{width:84px;height:84px;border-radius:50%;border:6px solid var(--surface);background:var(--accent);box-shadow:0 0 0 3px var(--accent);cursor:pointer}
 .pv-declencheur[disabled]{opacity:.4}
+
+/* Téléphone en horizontal : l'aperçu à gauche, les commandes à droite, tout visible sans défiler. */
+@media (orientation:landscape) and (max-height:600px){
+.prise{display:grid;grid-template-columns:minmax(0,1fr) 260px;grid-template-rows:auto minmax(0,1fr);max-width:none}
+.pv-tete{grid-column:1 / -1}
+.pv-cote{overflow-y:auto;min-height:0;justify-content:space-between}
+.pv-actions{grid-template-columns:1fr;justify-items:center}
+.pv-bande{min-height:48px}
+}

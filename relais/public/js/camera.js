@@ -6,12 +6,6 @@ export async function demarrer(video) {
   });
   video.srcObject = flux;
   await video.play();
-  // Le cadre épouse le flux et le suit quand le téléphone tourne : on voit exactement ce qui est photographié.
-  const ajuster = () => {
-    if (video.videoWidth && video.parentElement) video.parentElement.style.aspectRatio = video.videoWidth + ' / ' + video.videoHeight;
-  };
-  ajuster();
-  video.addEventListener('resize', ajuster);
   return { arreter: () => flux.getTracks().forEach((t) => t.stop()) };
 }
 

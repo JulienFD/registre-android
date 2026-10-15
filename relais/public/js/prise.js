@@ -94,8 +94,8 @@ export async function ouvrirPrise(racine, c, retour, synchro) {
   monter(racine, h('div', { class: 'prise' },
     h('div', { class: 'pv-tete' }, h('button', { class: 'btn', onclick: fin }, '← Accueil'), h('div', { class: 'pv-textes' }, titre, sousTitre)),
     h('div', { class: 'pv-cadre' }, video),
-    info, legende, bande,
-    h('div', { class: 'pv-actions' }, passer, declencheur, terminer)));
+    h('div', { class: 'pv-cote' }, info, legende, bande,
+      h('div', { class: 'pv-actions' }, passer, declencheur, terminer))));
   majVue();
 
   await lancerCamera();
