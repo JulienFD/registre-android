@@ -8,8 +8,8 @@ const { avecCors } = require('./cors.js');
 const PLAQUE = /^[A-Z0-9]{2,15}$/;
 const ID = /^[0-9a-f]{64}$/;
 const DUREE = 30 * 86400000;
-// Les fonctions Vercel refusent un corps de plus de 4,5 Mo : on garde de la marge.
-const TAILLE_MAX = 4 * 1024 * 1024;
+// Les fonctions Vercel refusent un corps de plus de 4,5 Mo (mégaoctets, 10^6 octets) : on garde de la marge.
+const TAILLE_MAX = 4000000;
 
 const cheminPdf = (id) => 'pdf/' + id + '.pdf';
 const cheminMeta = (id) => 'pdf/' + id + '.json';
