@@ -3,10 +3,12 @@ import { modalShow } from './pin.js';
 import { makePdf } from './pdf.js';
 import { renderSheet } from './sheet.js';
 
-/* Envoi du PDF au client : la tablette le dépose sur le relais, qui renvoie un lien secret à durée limitée ; le lien part par mail. */
+/* Envoi du PDF au client : déposé sur le relais, qui envoie le mail (SMTP) avec un lien secret à durée limitée.
+   Un PDF volumineux est aussi joint au mail, sans rien demander ; le message le précise ensuite. */
 var R = window.Relais;
 var envoi = { lien: '', mail: '', plaque: '', expire: 0 };
 var MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+var LIB = { entree: 'PDF d’entrée', full: 'PDF complet' };
 
 async function client() {
   var conf = await api.relaisConf();
@@ -17,40 +19,78 @@ async function client() {
 export function envoiOuvrir() {
   var v = VV(); if (!v || !S.cur) return;
   modalShow('<h2>Envoyer le PDF au client</h2>' +
-    '<p class="hint">Le PDF est déposé sur le serveur ; le client reçoit un lien de téléchargement valable 30 jours.</p>' +
+    '<p class="hint">Le PDF est déposé sur le serveur, qui envoie au client un mail avec un lien de téléchargement valable 30 jours. Un PDF volumineux est joint au mail.</p>' +
     '<label class="fld"><span>E-mail du client <em>*</em></span><input id="env-mail" type="email" autocomplete="off" value="' + esc(v.clientMail || '') + '"></label>' +
     '<div class="mrow2"><button class="btn pri" data-act="envoiPdf" data-mode="entree">PDF d’entrée</button><button class="btn pri" data-act="envoiPdf" data-mode="full">PDF complet</button></div>' +
     '<div class="mrow2"><button class="btn" data-act="closemodal">Annuler</button></div>');
 }
 
-/* PDF d'entrée : l'exemplaire archivé à la validation est celui qu'on envoie. PDF complet : toujours régénéré. */
-async function octets(v, mode) {
-  var dernier = (v.arch || []).filter(function (a) { return a.mode === mode }).pop();
-  if (mode === 'entree' && dernier) return { nom: dernier.rel.split('/').pop(), bytes: await api.lireArchive(dernier.rel) };
-  var r = await makePdf(mode, true);
-  return r ? { nom: r.rel.split('/').pop(), bytes: await api.lireArchive(r.rel) } : null;
+/* PDF d'entrée : l'exemplaire archivé à la validation est celui qu'on envoie. PDF complet : toujours régénéré.
+   archive : résultat de makePdf déjà obtenu (envoi automatique), pour ne pas régénérer. */
+async function octets(v, mode, archive) {
+  var rel = archive && archive.rel;
+  if (!rel && mode === 'entree') {
+    var dernier = (v.arch || []).filter(function (a) { return a.mode === 'entree' }).pop();
+    rel = dernier && dernier.rel;
+  }
+  if (!rel) { var r = await makePdf(mode, true); rel = r && r.rel }
+  return rel ? { nom: rel.split('/').pop(), bytes: await api.lireArchive(rel) } : null;
+}
+
+/* Dépose le PDF, fait envoyer le mail, note l'envoi dans le dossier. Renvoie le résumé ou lève une erreur. */
+async function transmettre(v, mode, mail, auto, archive) {
+  var c = await client();
+  if (!c) throw new Error('Relais non configuré : Réglages, section Relais NexPTG');
+  var f = await octets(v, mode, archive);
+  if (!f) throw new Error('PDF indisponible');
+  var d = await c.deposerPdf(v.plaque, f.nom, f.bytes);
+  var m = await c.envoyerMailPdf(d.id, mail, d.volumineux);
+  envoi = { lien: d.lien, mail: mail, plaque: v.plaque, expire: d.expire };
+  var res = { mode: mode, mail: mail, envoye: !!m.envoye, joint: !!m.joint, indisponible: !!m.indisponible, taille: f.bytes.length, lien: d.lien, expire: d.expire };
+  var note = res.envoye ? 'envoyé à ' + mail + (res.joint ? ' avec le PDF en pièce jointe (volumineux)' : '') : 'déposé sur le relais (mail non envoyé)';
+  await save({
+    envois: (v.envois || []).concat([{ ts: Date.now(), mode: mode, mail: mail, auto: !!auto, envoye: res.envoye, joint: res.joint }]),
+    hist: hist(v, LIB[mode] + ' ' + note + (auto ? ' (automatique)' : '') + ', lien valable jusqu’au ' + fmtDT(d.expire)),
+  });
+  return res;
+}
+
+function ecranResultat(res) {
+  var envoye = res.envoye;
+  modalShow('<h2>' + (envoye ? 'Mail envoyé' : 'Lien prêt') + '</h2>' +
+    '<p>' + esc(R.resumeEnvoi(res)) + '</p>' +
+    '<p class="hint">Valable jusqu’au ' + esc(fmtDT(res.expire)) + '. Toute personne qui possède ce lien peut télécharger le PDF.</p>' +
+    '<p class="hint" style="word-break:break-all">' + esc(res.lien) + '</p>' +
+    '<div class="mrow2"><button class="btn pri" data-act="envoiCopier">Copier le lien</button><button class="btn" data-act="envoiPartage">Partager le lien</button></div>' +
+    (envoye ? '' : '<div class="mrow2"><button class="btn" data-act="envoiMail">Écrire le mail à ' + esc(res.mail) + '</button></div>') +
+    '<div class="mrow2"><button class="btn" data-act="closemodal">Fermer</button></div>');
 }
 
 export async function envoiPdf(mode) {
   var v = VV(); if (!v || !S.cur) return;
+  mode = mode === 'full' ? 'full' : 'entree';
   var champ = $('#env-mail'), mail = champ ? champ.value.trim() : '';
   if (!MAIL.test(mail)) { toast('Saisir une adresse e-mail valide'); return }
-  var c = await client();
-  if (!c) { toast('Relais non configuré : Réglages, section Relais NexPTG'); return }
-  toast('Préparation du PDF…');
+  toast('Envoi du PDF au client…');
   try {
-    var f = await octets(v, mode === 'full' ? 'full' : 'entree');
-    if (!f) return;
-    var r = await c.deposerPdf(v.plaque, f.nom, f.bytes);
-    envoi = { lien: r.lien, mail: mail, plaque: v.plaque, expire: r.expire };
-    if (v.clientMail !== mail) save({ clientMail: mail });
-    save({ hist: hist(v, (mode === 'full' ? 'PDF complet' : 'PDF d’entrée') + ' déposé pour le client (lien valable jusqu’au ' + fmtDT(r.expire) + ')') });
+    var res = await transmettre(v, mode, mail, false);
+    if (!v.clientMail) save({ clientMail: mail });
     renderSheet(true);
-    modalShow('<h2>Lien prêt</h2><p class="hint">Valable jusqu’au ' + esc(fmtDT(r.expire)) + '. Toute personne qui possède ce lien peut télécharger le PDF.</p>' +
-      '<p class="hint" style="word-break:break-all">' + esc(r.lien) + '</p>' +
-      '<div class="mrow2"><button class="btn pri" data-act="envoiMail">Écrire le mail à ' + esc(mail) + '</button><button class="btn" data-act="envoiPartage">Partager le lien</button></div>' +
-      '<div class="mrow2"><button class="btn" data-act="closemodal">Fermer</button></div>');
+    ecranResultat(res);
   } catch (e) { toast('Envoi impossible : ' + (e && e.code ? R.messageErreur(e) : (e && e.message) || 'erreur')) }
+}
+
+/* Envoi automatique à la validation (entrée ou sortie) : sans fenêtre, une seule fois par type de PDF.
+   archive : le PDF qui vient d'être archivé. */
+export async function envoiAuto(mode, archive) {
+  var v = VV(); if (!v || !S.cur || !archive) return;
+  if ((v.envois || []).some(function (e) { return e.auto && e.mode === mode && e.envoye })) return;
+  if (!MAIL.test(String(v.clientMail || '').trim())) { toast(LIB[mode] + ' non envoyé : aucune adresse e-mail du client dans la fiche'); return }
+  try {
+    var res = await transmettre(v, mode, v.clientMail.trim(), true, archive);
+    renderSheet(true);
+    toast(R.resumeEnvoi(res));
+  } catch (e) { toast('Envoi automatique impossible : ' + (e && e.code ? R.messageErreur(e) : (e && e.message) || 'erreur') + '. Utiliser « Envoyer au client ».') }
 }
 
 function texteMail() {
@@ -67,4 +107,18 @@ export function envoiMail() {
 export async function envoiPartage() {
   if (!envoi.lien) return;
   try { await api.partagerLien('Votre dossier véhicule ' + envoi.plaque, texteMail()) } catch (e) { toast('Partage impossible') }
+}
+
+/* Copie le lien dans le presse-papiers de la tablette. */
+export async function envoiCopier() {
+  if (!envoi.lien) return;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(envoi.lien);
+    else {
+      var t = document.createElement('textarea'); t.value = envoi.lien; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select(); var ok = document.execCommand('copy'); t.remove();
+      if (!ok) throw new Error('copie');
+    }
+    toast('Lien copié');
+  } catch (e) { toast('Copie impossible : sélectionner le lien affiché') }
 }

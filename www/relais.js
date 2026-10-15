@@ -3,6 +3,16 @@
   'use strict';
 
   var DELAI_DEFAUT = 15000;
+  // Limites d'un corps de requête chez Vercel (4,5 Mo) : un PDF plus gros part en parties.
+  var PDF_UNIQUE_MAX = 4000000;
+  var PDF_PARTIE = 3000000;
+
+  function aleatoireHex(octets) {
+    var b = new Uint8Array(octets), s = '';
+    root.crypto.getRandomValues(b);
+    for (var i = 0; i < b.length; i++) s += ('0' + b[i].toString(16)).slice(-2);
+    return s;
+  }
 
   // Erreur à code stable (auth, interdit, requete, serveur, reponse, reseau) ; le message ne contient jamais d'identifiant.
   function erreur(code, message) {
@@ -121,11 +131,25 @@
         verifier(await requete('DELETE', '/api/photos?' + q));
         return { ok: true };
       },
-      // Dépose un PDF ; le lien renvoyé est secret et expire. Rien d'autre n'est accessible sans compte.
+      // Dépose un PDF ; le lien renvoyé est secret et expire. Au-delà de la limite d'un envoi, il part en parties de 3 Mo.
       deposerPdf: async function (plaque, nom, octets) {
         var q = 'plaque=' + encodeURIComponent(normPlaque(plaque)) + '&nom=' + encodeURIComponent(nom);
-        var r = verifier(await requete('PUT', '/api/pdf?' + q, octets));
-        return { lien: base + '/api/pdf?id=' + encodeURIComponent(r.json.id), expire: r.json.expire };
+        var volumineux = octets.length > PDF_UNIQUE_MAX, r;
+        if (!volumineux) r = verifier(await requete('PUT', '/api/pdf?' + q, octets));
+        else {
+          var sur = Math.ceil(octets.length / PDF_PARTIE), envoi = aleatoireHex(16);
+          for (var i = 0; i < sur; i++) {
+            var morceau = octets.subarray(i * PDF_PARTIE, Math.min(octets.length, (i + 1) * PDF_PARTIE));
+            r = verifier(await requete('PUT', '/api/pdf?' + q + '&envoi=' + envoi + '&partie=' + (i + 1) + '&sur=' + sur, morceau));
+          }
+        }
+        return { id: r.json.id, lien: base + '/api/pdf?id=' + encodeURIComponent(r.json.id), expire: r.json.expire, volumineux: volumineux };
+      },
+      // Demande au relais d'envoyer le mail (SMTP). 503 : service de mail non configuré, l'appelant se rabat sur un envoi manuel.
+      envoyerMailPdf: async function (id, mail, joindre) {
+        var r = verifier(await requete('POST', '/api/pdf', { id: id, mail: mail, joindre: !!joindre }), [503]);
+        if (r.statut === 503) return { indisponible: true };
+        return { envoye: !!r.json.envoye, joint: !!r.json.joint };
       },
       liberer: async function (cle, dossier) {
         var q = new URLSearchParams({ cle: cle, dossier: dossier }).toString();
@@ -151,7 +175,16 @@
     return (e && MESSAGES[e.code]) || 'Opération impossible avec le relais';
   }
 
-  var Relais = { creerClient: creerClient, normPlaque: normPlaque, messageErreur: messageErreur };
+  // Phrase affichée après un envoi au client : précise la pièce jointe d'un PDF trop gros pour être seulement lié.
+  function resumeEnvoi(o) {
+    var nom = o.mode === 'full' ? 'PDF complet' : 'PDF d’entrée';
+    if (o.indisponible) return nom + ' déposé sur le relais, mais le relais n’a pas de service de mail configuré : envoyer le lien manuellement.';
+    var mo = (Math.round(o.taille / 1e5) / 10).toString().replace('.', ',');
+    if (o.joint) return nom + ' envoyé à ' + o.mail + '. PDF volumineux (' + mo + ' Mo) : il est joint au mail, en plus du lien.';
+    return nom + ' envoyé à ' + o.mail + ', avec le lien de téléchargement.';
+  }
+
+  var Relais = { creerClient: creerClient, normPlaque: normPlaque, messageErreur: messageErreur, resumeEnvoi: resumeEnvoi };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = Relais;
   else root.Relais = Relais;

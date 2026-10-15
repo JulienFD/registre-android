@@ -16,7 +16,8 @@ Ce dossier est déployé séparément de l'app Android (Root Directory `relais` 
 | `GET /api/photos?plaque=…` | Liste des photos d'une plaque, avec leur état de réclamation (lecteurs) |
 | `GET /api/photos?plaque=…&sha=…` | Octets d'une photo (lecteurs) |
 | `POST /api/photos` · `DELETE /api/photos?sha256=…&dossier=…` | Réclame / libère une photo pour un dossier (lecteurs) |
-| `PUT /api/pdf?plaque=…&nom=…` | Dépose le PDF du client (lecteurs, 4 Mo max) ; renvoie un identifiant secret et une date d'expiration (30 jours) |
+| `PUT /api/pdf?plaque=…&nom=…` | Dépose le PDF du client (lecteurs, 4 Mo max par requête) ; renvoie un identifiant secret et une date d'expiration (30 jours). Au-delà : `&envoi=<32 hex>&partie=i&sur=n` (8 parties de 4 Mo max, 20 Mo au total), réassemblé à la dernière partie |
+| `POST /api/pdf` `{id, mail, joindre}` | Envoie le mail avec le lien par SMTP (lecteurs) ; `joindre` ajoute le PDF en pièce jointe. 503 sans configuration SMTP, 5 envois maximum par lien |
 | `GET /api/pdf?id=…` | Télécharge le PDF **sans compte** : l'identifiant de 256 bits est la seule protection ; 410 une fois expiré |
 | `POST /api/rapports` | Réclame un rapport pour un dossier : `{"cle", "plaque", "dossier"}` ; `409` s'il l'est déjà par un autre dossier |
 | `DELETE /api/rapports?cle=…&dossier=…` | Libère une réclamation (seul le dossier qui l'a faite) |
@@ -83,3 +84,16 @@ Depuis la racine du dépôt. `-u julien` seul fait demander le mot de passe, qui
 - Pas de limitation de débit ni de blocage après échecs : le mot de passe aléatoire (24 caractères) rend l'essai exhaustif irréaliste, mais à ajouter si l'adresse est largement diffusée.
 - Pas encore de purge : la suppression à la sortie et le nettoyage quotidien sont les livrables suivants.
 - Les quotas du plan Hobby (stockage Blob, transferts) sont à vérifier sur la page d'usage de Vercel.
+
+## Envoi de mail (SMTP)
+
+Variables d'environnement Vercel (Production), toutes obligatoires pour que le relais envoie les mails ; sans elles, `POST /api/pdf` répond 503 et la tablette propose d'écrire le mail à la main :
+
+| Variable | Rôle |
+| --- | --- |
+| `SMTP_HOST` | Serveur SMTP (ex. `smtp.example.com`) |
+| `SMTP_PORT` | `465` (TLS direct) ou `587` (STARTTLS, défaut) |
+| `SMTP_USER` / `SMTP_PASS` | Identifiants du compte d'envoi |
+| `SMTP_FROM` | Expéditeur affiché (ex. `Atelier <atelier@example.com>`) |
+
+Après ajout, redéployer pour que les variables soient prises en compte.

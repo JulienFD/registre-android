@@ -221,3 +221,53 @@ test('deposerPdf signale un PDF trop volumineux par une erreur codée', async ()
   await attendreErreur(c.deposerPdf('AB123CD', 'x.pdf', new Uint8Array(10)), 'volumineux');
   assert.match(messageErreur({ code: 'volumineux' }), /volumineux/i);
 });
+
+test('deposerPdf découpe un PDF de plus de 4 Mo en parties de 3 Mo, envoyées dans l\'ordre', async () => {
+  const f = faux(ok({ ok: true, recue: 1 }), ok({ ok: true, recue: 2 }), ok({ ok: true, id: 'b'.repeat(64), expire: 1800000000000, taille: 7000000 }));
+  const c = creerClient(CONF, f);
+  const octets = new Uint8Array(7000000);
+  octets.set([0x25, 0x50, 0x44, 0x46, 0x2D]);
+  const r = await c.deposerPdf('AB123CD', 'Complet.pdf', octets);
+  assert.equal(f.appels.length, 3);
+  const q = f.appels.map((a) => new URL(a.url).searchParams);
+  assert.deepEqual(q.map((p) => p.get('partie')), ['1', '2', '3']);
+  assert.ok(q.every((p) => p.get('sur') === '3' && /^[0-9a-f]{32}$/.test(p.get('envoi')) && p.get('envoi') === q[0].get('envoi')));
+  assert.deepEqual(f.appels.map((a) => a.init.body.length), [3000000, 3000000, 1000000]);
+  assert.equal(r.lien, 'https://relais.example.test/api/pdf?id=' + 'b'.repeat(64));
+  assert.equal(r.volumineux, true);
+});
+
+test('deposerPdf garde un seul envoi pour un PDF de 4 Mo ou moins', async () => {
+  const f = faux(ok({ ok: true, id: 'c'.repeat(64), expire: 1 }));
+  const r = await creerClient(CONF, f).deposerPdf('AB123CD', 'x.pdf', new Uint8Array(4000000));
+  assert.equal(f.appels.length, 1);
+  assert.equal(r.volumineux, false);
+});
+
+test('envoyerMailPdf demande au relais d\'envoyer le mail, avec ou sans pièce jointe', async () => {
+  const f = faux(ok({ ok: true, envoye: true, joint: true }));
+  const r = await creerClient(CONF, f).envoyerMailPdf('d'.repeat(64), 'client@example.test', true);
+  assert.equal(f.appels[0].init.method, 'POST');
+  assert.equal(f.appels[0].url, 'https://relais.example.test/api/pdf');
+  assert.deepEqual(JSON.parse(f.appels[0].init.body), { id: 'd'.repeat(64), mail: 'client@example.test', joindre: true });
+  assert.deepEqual(r, { envoye: true, joint: true });
+});
+
+test('envoyerMailPdf signale un relais sans service de mail (503) sans lever d\'erreur', async () => {
+  const r = await creerClient(CONF, faux({ statut: 503, corps: { ok: false } })).envoyerMailPdf('d'.repeat(64), 'client@example.test', false);
+  assert.deepEqual(r, { indisponible: true });
+});
+
+test('envoyerMailPdf signale une adresse refusée ou une panne du service de mail', async () => {
+  await attendreErreur(creerClient(CONF, faux({ statut: 400, corps: { ok: false } })).envoyerMailPdf('d'.repeat(64), 'x', false), 'requete');
+  await attendreErreur(creerClient(CONF, faux({ statut: 502, corps: { ok: false } })).envoyerMailPdf('d'.repeat(64), 'a@example.test', false), 'serveur');
+});
+
+test('resumeEnvoi dit ce qui a été envoyé, et précise la pièce jointe d\'un PDF volumineux', () => {
+  const { resumeEnvoi } = require('../www/relais.js');
+  assert.equal(resumeEnvoi({ mode: 'entree', mail: 'a@example.test', envoye: true, joint: false, taille: 1760000 }),
+    'PDF d’entrée envoyé à a@example.test, avec le lien de téléchargement.');
+  assert.equal(resumeEnvoi({ mode: 'full', mail: 'a@example.test', envoye: true, joint: true, taille: 7240000 }),
+    'PDF complet envoyé à a@example.test. PDF volumineux (7,2 Mo) : il est joint au mail, en plus du lien.');
+  assert.match(resumeEnvoi({ mode: 'entree', mail: 'a@example.test', indisponible: true, taille: 1000000 }), /service de mail/);
+});
