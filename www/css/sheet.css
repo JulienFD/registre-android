@@ -136,4 +136,8 @@
 
 /* Photos du téléphone : choix des compléments (case à cocher sur la vignette). */
 .tile.tel{position:relative;cursor:pointer}
-.tile.tel input{position:absolute;top:8px;left:8px;width:28px;height:28px;accent-color:var(--accent)}
+.tile.tel{padding:0;font:inherit}
+.tile.tel .coche{position:absolute;top:8px;left:8px;width:30px;height:30px;border-radius:50%;border:2px solid #fff;background:rgba(10,20,24,.45);color:transparent;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}
+.tile.tel.sel{border:4px solid var(--accent)}
+.tile.tel.sel img.ph{opacity:.8}
+.tile.tel.sel .coche{background:var(--accent);border-color:#fff;color:#fff}

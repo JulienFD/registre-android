@@ -7,7 +7,7 @@ import { renderSheet } from './sheet.js';
 
 /* Photos prises avec le téléphone (PWA) : récupération par la tablette. Les règles de rattachement sont dans photos-tel.js (racine). */
 var T = window.PhotosTel, R = window.Relais;
-var tel = { cand: [], urls: {}, octets: {} };
+var tel = { cand: [], urls: {}, octets: {}, choix: {} };
 
 async function client() {
   var conf = await api.relaisConf();
@@ -62,6 +62,7 @@ export async function telChoisir() {
   try {
     var liste = await c.photos(v.plaque);
     tel.cand = contexte(v, liste).complements;
+    tel.choix = {};
     for (var i = 0; i < tel.cand.length; i++) {
       var x = tel.cand[i];
       if (tel.octets[x.sha256]) continue;
@@ -73,18 +74,30 @@ export async function telChoisir() {
   } catch (e) { modalHide(); toast(R.messageErreur(e)); return }
   var dispo = tel.cand.filter(function (x) { return tel.octets[x.sha256] });
   if (!dispo.length) { modalHide(); toast('Aucune photo complémentaire disponible pour ce véhicule'); return }
-  modalShow('<h2>Photos du téléphone</h2><p class="hint">Cocher les photos à ajouter à ce complément. Une photo ajoutée n’est plus proposée pour un autre dossier.</p>' +
+  modalShow('<h2>Photos du téléphone</h2><p class="hint">Toucher les photos à ajouter à ce complément (plusieurs possibles). Une photo ajoutée n’est plus proposée pour un autre dossier.</p>' +
     '<div class="tiles">' + dispo.map(function (x) {
-      return '<label class="tile has tel"><input type="checkbox" data-sha="' + esc(x.sha256) + '"><img class="ph" alt="" src="' + esc(tel.urls[x.sha256]) + '">' +
-        '<span class="lb">' + esc(x.label || 'Complément') + ' · ' + esc(fmtDT(x.recu)) + ' · ' + esc(x.par) + '</span></label>';
+      return '<button type="button" class="tile has tel" data-act="telBasculer" data-sha="' + esc(x.sha256) + '" aria-pressed="false"><img class="ph" alt="" src="' + esc(tel.urls[x.sha256]) + '">' +
+        '<span class="coche" aria-hidden="true">✓</span>' +
+        '<span class="lb">' + esc(x.label || 'Complément') + ' · ' + esc(fmtDT(x.recu)) + ' · ' + esc(x.par) + '</span></button>';
     }).join('') + '</div>' +
-    '<div class="mrow2"><button class="btn" data-act="closemodal">Annuler</button><button class="btn pri" data-act="telAjouter">Ajouter au complément</button></div>');
+    '<div class="mrow2"><button class="btn" data-act="closemodal">Annuler</button><button class="btn pri" id="tel-ajout" data-act="telAjouter" disabled>Ajouter au complément</button></div>');
+}
+
+/* Toucher une photo la sélectionne ou la désélectionne ; le bouton compte les photos choisies. */
+export function telBasculer(el) {
+  var sha = el.dataset.sha;
+  if (tel.choix[sha]) delete tel.choix[sha]; else tel.choix[sha] = 1;
+  var on = !!tel.choix[sha], n = Object.keys(tel.choix).length;
+  el.classList.toggle('sel', on);
+  el.setAttribute('aria-pressed', on ? 'true' : 'false');
+  var b = document.getElementById('tel-ajout');
+  if (b) { b.disabled = !n; b.textContent = n ? 'Ajouter ' + n + ' photo' + (n > 1 ? 's' : '') + ' au complément' : 'Ajouter au complément' }
 }
 
 export function telAjouter() {
   var d = getCd();
-  document.querySelectorAll('#modal input[data-sha]:checked').forEach(function (cb) {
-    var x = tel.cand.filter(function (c) { return c.sha256 === cb.dataset.sha })[0];
+  Object.keys(tel.choix).forEach(function (sha) {
+    var x = tel.cand.filter(function (c) { return c.sha256 === sha })[0];
     if (!x || !tel.octets[x.sha256] || d.pics.some(function (p) { return p.relais === x.sha256 })) return;
     d.pics.push({ bytes: tel.octets[x.sha256], url: tel.urls[x.sha256], label: x.label || 'Complément', ts: x.prise || x.recu, imported: true, origName: 'téléphone', relais: x.sha256 });
   });
