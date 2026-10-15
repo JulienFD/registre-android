@@ -22,8 +22,8 @@ input[type=text],input[type=password]{min-height:52px;padding:0 14px;border-radi
 .pv-textes{min-width:0}
 .pv-titre{font-size:22px;font-weight:700}
 .pv-sous{color:var(--ink2);font-size:14px}
-.pv-cadre{background:#000;border-radius:10px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
-.pv-video{width:100%;height:100%;object-fit:cover}
+.pv-cadre{background:#000;border-radius:10px;overflow:hidden;aspect-ratio:4/3;max-height:70dvh;margin:0 auto;max-width:100%;display:flex;align-items:center;justify-content:center}
+.pv-video{width:100%;height:100%;object-fit:contain}
 .pv-info{min-height:1.4em;color:var(--ink2);font-size:14px}
 .pv-legende{width:100%}
 .pv-bande{display:flex;gap:6px;overflow-x:auto;min-height:64px}

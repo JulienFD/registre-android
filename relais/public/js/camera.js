@@ -6,6 +6,8 @@ export async function demarrer(video) {
   });
   video.srcObject = flux;
   await video.play();
+  // Le cadre épouse le flux (portrait ou paysage) : ce qu'on voit est exactement ce qui est photographié.
+  if (video.videoWidth && video.parentElement) video.parentElement.style.aspectRatio = video.videoWidth + ' / ' + video.videoHeight;
   return { arreter: () => flux.getTracks().forEach((t) => t.stop()) };
 }
 
