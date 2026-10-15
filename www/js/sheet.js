@@ -192,7 +192,7 @@ function sheetHead(v) {
   if (!S.cur) tabs = [['infos', 'Informations']];
   return '<div class="sh"><div class="shin"><div class="shrow"><button class="btn" data-act="close">← Tableau</button>' +
     '<div class="ttl">' + plateHtml(v.plaque || '') + '<div>' + esc([v.marque, v.modele].filter(Boolean).join(' ') || 'Nouvelle entrée') + (t ? ' · ' + esc(t.l) : '') + '</div></div>' + seg +
-    (S.cur ? '<button class="btn" data-act="pdf" data-mode="entree">PDF d’entrée (client)</button><button class="btn" data-act="pdf" data-mode="full">PDF complet</button>' : '') +
+    (S.cur ? '<button class="btn" data-act="pdf" data-mode="entree">PDF d’entrée (client)</button><button class="btn" data-act="pdf" data-mode="full">PDF complet</button><button class="btn" data-act="envoiOuvrir">Envoyer au client</button>' : '') +
     ((v.arch && v.arch.length) ? '<span class="chip ok">Dernier PDF archivé ' + esc(fmtDT(v.arch[v.arch.length - 1].ts)) + '</span>' : '') + '<span class="sv" id="sv"></span></div>' +
     '<div class="tabs" role="tablist">' + tabs.map(function (a) { return '<button class="tab" role="tab" aria-selected="' + (S.tab === a[0]) + '" data-act="tab" data-v="' + a[0] + '">' + a[1] + '</button>' }).join('') + '</div></div></div>';
 }

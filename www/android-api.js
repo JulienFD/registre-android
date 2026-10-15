@@ -167,6 +167,10 @@
       await FS.writeFile({ path: log, data: txt + [when, rel, sha, chain].join(';') + '\n', directory: D, encoding: 'utf8', recursive: true });
       return { path: rel, rel: rel, sha256: sha };
     },
+    /* Octets d'un PDF archivé (chemin relatif renvoyé par archive). */
+    lireArchive: async function (rel) { return readBytes(String(rel)) },
+    /* Ouvre le partage Android avec un lien (SMS, WhatsApp, mail…). */
+    partagerLien: async function (titre, texte) { await SH.share({ title: titre, text: texte, dialogTitle: titre }); return true },
     openFile: async function (p) {
       try { await shareBytes(String(p).split('/').pop(), await readBytes(p)) } catch (e) { }
       return true;

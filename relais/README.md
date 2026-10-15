@@ -16,6 +16,8 @@ Ce dossier est déployé séparément de l'app Android (Root Directory `relais` 
 | `GET /api/photos?plaque=…` | Liste des photos d'une plaque, avec leur état de réclamation (lecteurs) |
 | `GET /api/photos?plaque=…&sha=…` | Octets d'une photo (lecteurs) |
 | `POST /api/photos` · `DELETE /api/photos?sha256=…&dossier=…` | Réclame / libère une photo pour un dossier (lecteurs) |
+| `PUT /api/pdf?plaque=…&nom=…` | Dépose le PDF du client (lecteurs, 4 Mo max) ; renvoie un identifiant secret et une date d'expiration (30 jours) |
+| `GET /api/pdf?id=…` | Télécharge le PDF **sans compte** : l'identifiant de 256 bits est la seule protection ; 410 une fois expiré |
 | `POST /api/rapports` | Réclame un rapport pour un dossier : `{"cle", "plaque", "dossier"}` ; `409` s'il l'est déjà par un autre dossier |
 | `DELETE /api/rapports?cle=…&dossier=…` | Libère une réclamation (seul le dossier qui l'a faite) |
 

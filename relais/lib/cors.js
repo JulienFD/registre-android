@@ -21,7 +21,7 @@ function preflight(origine, origines) {
   const base = entetesCors(origine, origines);
   const entetes = Object.assign({ 'Cache-Control': 'private, no-store' }, base);
   if (base['Access-Control-Allow-Origin']) {
-    entetes['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, OPTIONS';
+    entetes['Access-Control-Allow-Methods'] = 'GET, PUT, POST, DELETE, OPTIONS';
     entetes['Access-Control-Allow-Headers'] = 'Authorization, Content-Type';
     entetes['Access-Control-Max-Age'] = '600';
   }

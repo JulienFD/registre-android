@@ -202,3 +202,22 @@ test('libererPhoto utilise DELETE avec l\'empreinte et le dossier', async () => 
   assert.equal(f.appels[0].init.method, 'DELETE');
   assert.equal(f.appels[0].url, 'https://relais.example.test/api/photos?sha256=' + SHA + '&dossier=D1');
 });
+
+test('deposerPdf envoie le PDF en PUT et renvoie le lien de téléchargement et son expiration', async () => {
+  const f = faux(ok({ ok: true, id: 'a'.repeat(64), expire: 1800000000000 }));
+  const c = creerClient(CONF, f);
+  const octets = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D, 1, 2]);
+  const r = await c.deposerPdf('ab-123-cd', 'Entree AB.pdf', octets);
+  assert.equal(f.appels[0].init.method, 'PUT');
+  assert.equal(f.appels[0].url, 'https://relais.example.test/api/pdf?plaque=AB123CD&nom=Entree%20AB.pdf');
+  assert.equal(f.appels[0].init.headers['Content-Type'], 'application/pdf');
+  assert.equal(f.appels[0].init.body, octets);
+  assert.equal(r.lien, 'https://relais.example.test/api/pdf?id=' + 'a'.repeat(64));
+  assert.equal(r.expire, 1800000000000);
+});
+
+test('deposerPdf signale un PDF trop volumineux par une erreur codée', async () => {
+  const c = creerClient(CONF, faux({ statut: 413, corps: { ok: false } }));
+  await attendreErreur(c.deposerPdf('AB123CD', 'x.pdf', new Uint8Array(10)), 'volumineux');
+  assert.match(messageErreur({ code: 'volumineux' }), /volumineux/i);
+});

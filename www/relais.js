@@ -40,7 +40,8 @@
       var ctl = typeof AbortController === 'function' ? new AbortController() : null;
       var minuteur = setTimeout(function () { if (ctl) ctl.abort(); }, delai);
       var init = { method: methode, cache: 'no-store', headers: { Authorization: autorisation } };
-      if (corps !== undefined) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(corps); }
+      if (corps instanceof Uint8Array) { init.headers['Content-Type'] = 'application/pdf'; init.body = corps; }
+      else if (corps !== undefined) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(corps); }
       if (ctl) init.signal = ctl.signal;
       var rep, texte;
       try {
@@ -81,7 +82,8 @@
       if (r.statut === 200 || (tolere && tolere.indexOf(r.statut) > -1)) return r;
       if (r.statut === 401) throw erreur('auth', 'Identifiants refusés par le relais');
       if (r.statut === 403) throw erreur('interdit', 'Ce compte n\'est pas autorisé à lire les rapports');
-      if (r.statut === 400 || r.statut === 413) throw erreur('requete', 'Requête refusée par le relais');
+      if (r.statut === 413) throw erreur('volumineux', 'Fichier trop volumineux pour le relais');
+      if (r.statut === 400 || r.statut === 415) throw erreur('requete', 'Requête refusée par le relais');
       throw erreur('serveur', 'Le relais est indisponible');
     }
 
@@ -119,6 +121,12 @@
         verifier(await requete('DELETE', '/api/photos?' + q));
         return { ok: true };
       },
+      // Dépose un PDF ; le lien renvoyé est secret et expire. Rien d'autre n'est accessible sans compte.
+      deposerPdf: async function (plaque, nom, octets) {
+        var q = 'plaque=' + encodeURIComponent(normPlaque(plaque)) + '&nom=' + encodeURIComponent(nom);
+        var r = verifier(await requete('PUT', '/api/pdf?' + q, octets));
+        return { lien: base + '/api/pdf?id=' + encodeURIComponent(r.json.id), expire: r.json.expire };
+      },
       liberer: async function (cle, dossier) {
         var q = new URLSearchParams({ cle: cle, dossier: dossier }).toString();
         verifier(await requete('DELETE', '/api/rapports?' + q));
@@ -134,6 +142,7 @@
     serveur: 'Le relais est indisponible, réessayer plus tard',
     reponse: 'Réponse du relais inattendue',
     requete: 'Requête refusée par le relais',
+    volumineux: 'Le PDF est trop volumineux pour le relais (4 Mo maximum)',
   };
 
   // Message à montrer à l'utilisateur : jamais le texte brut d'une erreur technique.

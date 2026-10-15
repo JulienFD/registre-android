@@ -7,6 +7,7 @@ import { autoCreate, closeSheet, createDossier, lockConfirm, newEntry, openDossi
 import { installerMiseAJour, verifierMiseAJour } from './maj.js';
 import { telAjouter, telBasculer, telChoisir, telRecuperer } from './photos-tel.js';
 import { nxChoisir, nxCommencer, nxPoint, nxRecharger, nxTermine, nxTermineOk, nxVerifier } from './nexptg-tab.js';
+import { envoiMail, envoiOuvrir, envoiPartage, envoiPdf } from './envoi-pdf.js';
 import { makePdf } from './pdf.js';
 import { canShoot, commitPhoto, complSink, delPhoto, doImport, handlePdf, startQueue } from './photos.js';
 import { changePin, chooseArchive, chooseCopie, clearRelais, closeSettings, exportData, importData, modalHide, openSettings, relock, removeCopie, saveRelais, testRelais, unlock } from './pin.js';
@@ -67,6 +68,10 @@ export function act(a, b) {
     save({ statut: 'sorti', sortieAt: Date.now(), hist: hist(v7, 'Sortie validée : véhicule rendu par ' + (v7.remisPar || '—') + ', récupéré par ' + (v7.remisA || '—'), v7.remisPar || undefined) }).then(function () { toast('Sortie validée'); return makePdf('full', true) }); renderSheet(); return
   }
   if (a === 'pdf') { makePdf(d.mode, false); return }
+  if (a === 'envoiOuvrir') { envoiOuvrir(); return }
+  if (a === 'envoiPdf') { envoiPdf(d.mode); return }
+  if (a === 'envoiMail') { envoiMail(); return }
+  if (a === 'envoiPartage') { envoiPartage(); return }
   if (a === 'addpdf') { handlePdf(); return }
   if (a === 'openpdf') { var pp = S.photos.filter(function (x) { return x.id === d.pid })[0]; if (pp) { if (api.openPdf) api.openPdf(pp); else window.open(srcOf(pp)) } return }
   if (a === 'unlock') { unlock(); return }
