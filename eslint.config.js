@@ -32,7 +32,7 @@ module.exports = [
     languageOptions: { sourceType: 'script', globals: { ...globals.serviceworker } },
   },
   {
-    files: ['www/utils.js', 'www/sauvegarde.js', 'www/nexptg.js', 'www/nexptg-vue.js', 'www/nexptg-schema.js', 'www/nexptg-pdf.js', 'www/photos-tel.js', 'www/relais.js', 'tests/**/*.js', 'scripts/**/*.js', '*.js'],
+    files: ['www/utils.js', 'www/sauvegarde.js', 'www/nexptg.js', 'www/nexptg-vue.js', 'www/nexptg-geometrie.js', 'www/nexptg-schema.js', 'www/nexptg-pdf.js', 'www/photos-tel.js', 'www/relais.js', 'tests/**/*.js', 'scripts/**/*.js', '*.js'],
     languageOptions: { sourceType: 'commonjs', globals: { ...globals.node } },
   },
 ];
