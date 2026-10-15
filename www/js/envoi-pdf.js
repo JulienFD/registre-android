@@ -10,7 +10,7 @@ var envoi = { lien: '', mail: '', plaque: '', expire: 0 };
 var MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 var LIB = { entree: 'PDF d’entrée', full: 'PDF complet' };
 
-async function client() {
+export async function client() {
   var conf = await api.relaisConf();
   if (!conf || !conf.url || !conf.compte || !conf.motDePasse) return null;
   try { return R.creerClient(conf) } catch (e) { return null }

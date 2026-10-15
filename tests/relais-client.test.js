@@ -271,3 +271,18 @@ test('resumeEnvoi dit ce qui a été envoyé, et précise la pièce jointe d\'un
     'PDF complet envoyé à a@example.test. PDF volumineux (7,2 Mo) : il est joint au mail, en plus du lien.');
   assert.match(resumeEnvoi({ mode: 'entree', mail: 'a@example.test', indisponible: true, taille: 1000000 }), /service de mail/);
 });
+
+test('signalerSortie poste la plaque normalisée à /api/sortie', async () => {
+  const f = faux(ok({ ok: true }));
+  assert.deepEqual(await creerClient(CONF, f).signalerSortie('ab-123-cd'), { ok: true });
+  assert.equal(f.appels[0].init.method, 'POST');
+  assert.equal(f.appels[0].url, 'https://relais.example.test/api/sortie');
+  assert.deepEqual(JSON.parse(f.appels[0].init.body), { plaque: 'AB123CD' });
+});
+
+test('annulerSortie supprime le marqueur par DELETE avec la plaque normalisée', async () => {
+  const f = faux(ok({ ok: true }));
+  assert.deepEqual(await creerClient(CONF, f).annulerSortie('ab-123-cd'), { ok: true });
+  assert.equal(f.appels[0].init.method, 'DELETE');
+  assert.equal(f.appels[0].url, 'https://relais.example.test/api/sortie?plaque=AB123CD');
+});

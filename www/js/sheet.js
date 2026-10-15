@@ -230,7 +230,7 @@ function tabHtml(v) { return S.tab === 'compl' ? tabCompl(v) : S.tab === 'photos
 export function renderSheet(keepScroll) {
   var sh = $('#sheet'), v = VV(); if (!v) { sh.hidden = true; return }
   var y = keepScroll ? sh.scrollTop : 0;
-  var st = v.statut === 'sorti' ? '<div class="banner">Véhicule sorti le ' + esc(fmtDT(v.sortieAt)) + (v.remisA ? ', récupéré par ' + esc(v.remisA) : '') + (v.remisPar ? ', rendu par ' + esc(v.remisPar) : '') + '. Le dossier reste consultable ; ce qui est découvert ensuite s’ajoute dans Compléments.</div>' : '';
+  var st = v.statut === 'sorti' ? '<div class="banner">Véhicule sorti le ' + esc(fmtDT(v.sortieAt)) + (v.remisA ? ', récupéré par ' + esc(v.remisA) : '') + (v.remisPar ? ', rendu par ' + esc(v.remisPar) : '') + '. Le dossier reste consultable ; ce qui est découvert ensuite s’ajoute dans Compléments.' + (S.unlocked === v.id ? '' : ' <button class="btn" data-act="cancelexit">Annuler la sortie</button>') + '</div>' : '';
   sh.innerHTML = sheetHead(v) + '<div class="body">' + lockBar(v) + st + tabHtml(v) + '</div>' + gate(v);
   sh.hidden = false; document.documentElement.style.overflow = 'hidden';
   sh.scrollTop = y;

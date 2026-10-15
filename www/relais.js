@@ -151,6 +151,16 @@
         if (r.statut === 503) return { indisponible: true };
         return { envoye: !!r.json.envoye, joint: !!r.json.joint };
       },
+      // Dit au relais que le véhicule est sorti : il supprime ses photos et ses rapports 7 jours plus tard.
+      signalerSortie: async function (plaque) {
+        verifier(await requete('POST', '/api/sortie', { plaque: normPlaque(plaque) }));
+        return { ok: true };
+      },
+      // Sortie annulée : le relais ne purgera plus rien pour cette plaque.
+      annulerSortie: async function (plaque) {
+        verifier(await requete('DELETE', '/api/sortie?plaque=' + encodeURIComponent(normPlaque(plaque))));
+        return { ok: true };
+      },
       liberer: async function (cle, dossier) {
         var q = new URLSearchParams({ cle: cle, dossier: dossier }).toString();
         verifier(await requete('DELETE', '/api/rapports?' + q));
