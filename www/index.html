@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; media-src 'self' blob:; connect-src 'self' blob: data: https://api.github.com; worker-src 'self' blob:;">
+    content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; media-src 'self' blob:; connect-src 'self' blob: data: https://api.github.com https://registre-android.vercel.app; worker-src 'self' blob:;">
   <title>Registre Véhicules</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="css/base.css">
@@ -50,7 +50,14 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="android-api.js"></script>
   <script src="utils.js"></script>
+  <script src="nexptg.js"></script>
+  <script src="nexptg-geometrie.js"></script>
+  <script src="nexptg-schema.js"></script>
+  <script src="nexptg-pdf.js"></script>
+  <script src="photos-tel.js"></script>
+  <script src="nexptg-vue.js"></script>
   <script src="sauvegarde.js"></script>
+  <script src="relais.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>
 

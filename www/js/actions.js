@@ -5,9 +5,13 @@ import { COLS } from './constants.js';
 import { $, S, TAMPON, VV, entryErrors, api, flush, hist, save, srcOf, toast } from './core.js';
 import { autoCreate, closeSheet, createDossier, lockConfirm, newEntry, openDossier, undoSig, validateEntry } from './dossier.js';
 import { installerMiseAJour, verifierMiseAJour } from './maj.js';
+import { telAjouter, telBasculer, telChoisir, telMode, telRecuperer } from './photos-tel.js';
+import { nxChoisir, nxCommencer, nxMode, nxPoint, nxRecharger, nxTermine, nxTermineOk, nxVerifier } from './nexptg-tab.js';
+import { envoiAuto, envoiCopier, envoiMail, envoiOuvrir, envoiPartage, envoiPdf } from './envoi-pdf.js';
+import { signalerSortie, sortieAnnuler } from './sortie.js';
 import { makePdf } from './pdf.js';
 import { canShoot, commitPhoto, complSink, delPhoto, doImport, handlePdf, startQueue } from './photos.js';
-import { changePin, chooseArchive, chooseCopie, closeSettings, exportData, importData, modalHide, openSettings, relock, removeCopie, unlock } from './pin.js';
+import { changePin, chooseArchive, chooseCopie, clearRelais, closeSettings, exportData, importData, modalHide, openSettings, relock, removeCopie, saveRelais, testRelais, unlock } from './pin.js';
 import { clearInvalid, exitReady, readiness, renderSheet, showMissing } from './sheet.js';
 
 export function act(a, b) {
@@ -62,12 +66,18 @@ export function act(a, b) {
   if (a === 'validateexit') {
     var v7 = VV(); if (!exitReady(v7).every(function (x) { return x.ok })) { toast('Il reste des points à compléter'); return }
     S.unlocked = null; S.snap = null;
-    save({ statut: 'sorti', sortieAt: Date.now(), hist: hist(v7, 'Sortie validée : véhicule rendu par ' + (v7.remisPar || '—') + ', récupéré par ' + (v7.remisA || '—'), v7.remisPar || undefined) }).then(function () { toast('Sortie validée'); return makePdf('full', true) }); renderSheet(); return
+    save({ statut: 'sorti', sortieAt: Date.now(), hist: hist(v7, 'Sortie validée : véhicule rendu par ' + (v7.remisPar || '—') + ', récupéré par ' + (v7.remisA || '—'), v7.remisPar || undefined) }).then(function () { toast('Sortie validée'); signalerSortie(v7.plaque); return makePdf('full', true) }).then(function (r) { return envoiAuto('full', r) }); renderSheet(); return
   }
   if (a === 'pdf') { makePdf(d.mode, false); return }
+  if (a === 'envoiOuvrir') { envoiOuvrir(); return }
+  if (a === 'envoiPdf') { envoiPdf(d.mode); return }
+  if (a === 'envoiMail') { envoiMail(); return }
+  if (a === 'envoiPartage') { envoiPartage(); return }
+  if (a === 'envoiCopier') { envoiCopier(); return }
   if (a === 'addpdf') { handlePdf(); return }
   if (a === 'openpdf') { var pp = S.photos.filter(function (x) { return x.id === d.pid })[0]; if (pp) { if (api.openPdf) api.openPdf(pp); else window.open(srcOf(pp)) } return }
   if (a === 'unlock') { unlock(); return }
+  if (a === 'cancelexit') { sortieAnnuler(); return }
   if (a === 'relock') { relock(); return }
   if (a === 'cdshoot') { getCd(); camOpen({ free: true, phase: 'compl', title: 'Photos du complément', defLabel: 'Complément', sink: complSink }); return }
   if (a === 'cdimport') { getCd(); doImport(function (f, i) { return { phase: 'compl', slot: 'x' + i, label: f.name.replace(/\.[^.]+$/, '') || 'Complément' } }, complSink).then(function (n) { if (n) { renderSheet(true); toast(n + ' image(s) ajoutée(s)') } }); return }
@@ -84,6 +94,22 @@ export function act(a, b) {
   if (a === 'chooseArch') { chooseArchive(); return }
   if (a === 'chooseCopie') { chooseCopie(); return }
   if (a === 'removeCopie') { removeCopie(); return }
+  if (a === 'photosMode') { telMode(d.phase, d.mode); return }
+  if (a === 'telRecuperer') { telRecuperer(); return }
+  if (a === 'telChoisir') { telChoisir(); return }
+  if (a === 'telBasculer') { telBasculer(b); return }
+  if (a === 'telAjouter') { telAjouter(); return }
+  if (a === 'nxMode') { nxMode(d.mode); return }
+  if (a === 'nxCommencer') { nxCommencer(); return }
+  if (a === 'nxVerifier') { nxVerifier(); return }
+  if (a === 'nxPoint') { nxPoint(d); return }
+  if (a === 'nxRecharger') { nxRecharger(); return }
+  if (a === 'nxChoisir') { nxChoisir(d.sha); return }
+  if (a === 'nxTermine') { nxTermine(); return }
+  if (a === 'nxTermineOk') { nxTermineOk(); return }
+  if (a === 'relaisSave') { saveRelais(); return }
+  if (a === 'relaisTest') { testRelais(); return }
+  if (a === 'relaisClear') { clearRelais(); return }
   if (a === 'exportZip') { exportData('zip'); return }
   if (a === 'exportRegistre') { exportData('registre'); return }
   if (a === 'importData') { importData(); return }

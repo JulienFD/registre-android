@@ -1,6 +1,7 @@
 import { tabCompl } from './compl.js';
 import { CAM, PLAQUE, CHECK, COLS, DMG, PANELS, SLOTS, SORTIE_REQ, TYPES, VIEWS } from './constants.js';
-import { $, S, V, VV, esc, fmtD, fmtDT, isLocked, limTxt, entryErrors, plateHtml, plateKindOf, RULES, srcOf, todayISO } from './core.js';
+import { $, S, V, VV, esc, fmtD, fmtDT, fmtPlate, isLocked, limTxt, entryErrors, plateHtml, plateKindOf, RULES, srcOf, todayISO } from './core.js';
+import { nexptgHtml, nexptgMonter } from './nexptg-tab.js';
 import { entrySet, exitSet } from './photos.js';
 
 function lockWrap(html, area) { return '<fieldset class="lockfs"' + (isLocked(VV(), area) ? ' disabled' : '') + '>' + html + '</fieldset>' }
@@ -21,6 +22,7 @@ export function readiness(v) {
     { t: 'Informations', ok: !entryErrors(v).length, tab: 'infos' },
     { t: 'Photos ' + np + '/' + SLOTS.length, ok: np === SLOTS.length, tab: 'photos' },
     { t: 'Contrôle ' + nc + '/' + CHECK.length, ok: nc === CHECK.length, tab: 'dom' },
+    { t: 'NexPTG', ok: window.Nexptg.etatNexptg(v, S.nm[v.id] || []).ok, tab: 'mes' },
     { t: 'Signatures', ok: !!v.sigRecep && (!!v.sigClient || !!v.clientAbsent), tab: 'sign' }
   ];
 }
@@ -67,6 +69,19 @@ function tile(phase, s, nextKey) {
     '<span class="lb">' + esc(s.l) + (busy && p ? ' · envoi…' : '') + '</span></button>';
 }
 function extraTiles(extras, phase) { return extras.length ? '<div class="tiles">' + extras.map(function (p) { return '<button class="tile has" data-act="view" data-phase="' + phase + '" data-pid="' + esc(p.id) + '"><img class="ph" loading="lazy" alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><span class="lb">' + esc(p.label || 'Détail') + '</span></button>' }).join('') + '</div>' : '' }
+/* Deux façons de faire les photos, au choix par phase : récupérer celles du téléphone, ou prendre la suivante avec la tablette. */
+function modeBar(phase, next, done) {
+  var mode = window.PhotosTel.modePhotos(VV(), phase);
+  var btn = function (m, texte, cls) { return '<button class="btn' + (cls ? ' ' + cls : '') + '" data-act="photosMode" data-phase="' + phase + '" data-mode="' + m + '">' + texte + '</button>' };
+  var compte = '<span class="sv" style="align-self:center">' + done + ' sur ' + SLOTS.length + (phase === 'sortie' ? ' · ' + SORTIE_REQ + ' minimum pour valider la sortie' : '') + '</span>';
+  if (!mode) return '<p class="hint">Comment faire les photos ?</p><div class="seg">' + btn('tel', 'Avec le téléphone', 'pri') + btn('tablette', 'Avec la tablette') + '</div>';
+  if (mode === 'tel') {
+    return '<ol class="hint nx-etapes"><li>Sur le téléphone, ouvrir la page photos et saisir la plaque <b>' + esc(fmtPlate(VV().plaque)) + '</b>.</li><li>Prendre les vues, puis les récupérer ici.</li></ol>' +
+      '<div class="seg"><button class="btn pri" data-act="telRecuperer">Récupérer les photos du téléphone</button>' + btn('tablette', 'Passer à la tablette') + compte + '</div>';
+  }
+  return '<div class="seg"><button class="btn pri shoot" data-act="next" data-phase="' + phase + '">' + CAM + (next ? 'Photo suivante : ' + esc(SLOTS.filter(function (s) { return s.k === next })[0].l) : 'Toutes les vues sont prises') + '</button>' +
+    btn('tel', 'Passer au téléphone') + compte + '</div>';
+}
 function photoGrid(phase) {
   var v = VV(), lk = isLocked(v, phase === 'entree' ? 'entry' : 'exit');
   var set = phase === 'entree' ? entrySet() : exitSet();
@@ -76,9 +91,7 @@ function photoGrid(phase) {
   var bar = '<div class="pbar" aria-hidden="true"><i style="width:' + Math.min(100, Math.round(done / SLOTS.length * 100)) + '%"></i></div>';
   var tiles = '<div class="tiles">' + SLOTS.map(function (s) { return tile(phase, s, next) }).join('') + '</div>';
   if (lk) return bar + '<div class="seg"><span class="sv">' + done + ' sur ' + SLOTS.length + ' · photos verrouillées. Les ajouts se font dans Compléments.</span></div>' + tiles + (extras.length ? '<div class="sec" style="background:var(--bg)"><h3>Photos de détail</h3>' + extraTiles(extras, phase) + '</div>' : '');
-  return bar +
-    '<div class="seg"><button class="btn pri shoot" data-act="next" data-phase="' + phase + '">' + CAM + (next ? 'Photo suivante : ' + esc(SLOTS.filter(function (s) { return s.k === next })[0].l) : 'Toutes les vues sont prises') + '</button>' +
-    '<span class="sv" style="align-self:center">' + done + ' sur ' + SLOTS.length + (phase === 'sortie' ? ' · ' + SORTIE_REQ + ' minimum pour valider la sortie' : '') + '</span></div>' + tiles +
+  return bar + modeBar(phase, next, done) + tiles +
     '<div class="sec" style="background:var(--bg)"><h3>Photos de détail</h3><p class="hint">Rayure, impact, numéro de série, tout ce qui mérite un gros plan. On peut en ajouter à tout moment.</p>' +
     '<div class="seg"><label class="fld" style="flex:1;min-width:200px"><span>Légende</span><input id="xl-' + phase + '" type="text" maxlength="60" placeholder="Ex. impact porte arrière gauche" autocomplete="off"></label>' +
     '<button class="btn" style="align-self:flex-end" data-act="extra" data-phase="' + phase + '">' + CAM + 'Prendre</button>' +
@@ -120,24 +133,33 @@ function tabDom0(v) {
     '<div class="sec"><h3>Contrôle point par point</h3><div>' + ch + '</div></div>';
 }
 
-function mesBody() {
+function mesPdf(pdfs) {
+  return '<h3 style="font-size:18px">PDF du NexDiag</h3><p class="hint">Dans le mail envoyé par le NexDiag, enregistrer la pièce jointe sur le PC, puis la choisir ici. Ses pages sont ajoutées au PDF final du véhicule.</p>' +
+    (pdfs.length ? '<div class="vlist">' + pdfs.map(function (p) { return '<div class="arow"><span class="grow"><b>' + esc(p.label) + '</b><br><span class="sv">Ajouté le ' + esc(fmtDT(p.ts)) + (p.by ? ' par ' + esc(p.by) : '') + '</span></span><button class="btn sm" data-act="openpdf" data-pid="' + esc(p.id) + '">Ouvrir</button><button class="btn sm bad" data-act="delphoto" data-pid="' + esc(p.id) + '">Retirer</button></div>' }).join('') + '</div>' : '<p class="sv">Aucun PDF ajouté pour l’instant.</p>') +
+    '<div class="seg"><button class="btn pri" data-act="addpdf">Ajouter le PDF du NexDiag</button></div>';
+}
+function mesPhotos(ph) {
+  return '<h3 style="font-size:18px">Photos de mesure</h3>' +
+    '<div class="seg"><label class="fld" style="flex:1;min-width:200px"><span>Légende</span><input id="xl-mesures" type="text" maxlength="60" placeholder="Ex. capot, zone repeinte" autocomplete="off"></label>' +
+    '<button class="btn" style="align-self:flex-end" data-act="extra" data-phase="mesures">' + CAM + 'Prendre</button>' +
+    '<button class="btn" style="align-self:flex-end" data-act="extragal" data-phase="mesures">Importer</button>' +
+    '<button class="btn" style="align-self:flex-end" data-act="telRecuperer">Photos du téléphone</button></div>' +
+    (ph.length ? '<div class="tiles">' + ph.map(function (p) { return '<button class="tile has" data-act="view" data-phase="mesures" data-pid="' + esc(p.id) + '"><img class="ph" loading="lazy" alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><span class="lb">' + esc(p.label || 'Mesure') + '</span></button>' }).join('') + '</div>' : '');
+}
+/* Le PDF NexDiag et les épaisseurs saisies n'existent qu'en mode manuel ; en automatique, le rapport du relais les remplace. */
+function mesBody(manuel) {
   var by = function (a, b) { return a.ts - b.ts };
   var pdfs = S.photos.filter(function (p) { return p.phase === 'mesures' && p.kind === 'pdf' }).sort(by);
   var ph = S.photos.filter(function (p) { return p.phase === 'mesures' && p.kind !== 'pdf' }).sort(by);
-  return '<h3 style="font-size:18px">PDF reçu du NexDiag</h3><p class="hint">Dans le mail envoyé par le NexDiag, enregistrer la pièce jointe sur le PC, puis la choisir ici. Ses pages sont ajoutées au PDF final du véhicule.</p>' +
-    (pdfs.length ? '<div class="vlist">' + pdfs.map(function (p) { return '<div class="arow"><span class="grow"><b>' + esc(p.label) + '</b><br><span class="sv">Ajouté le ' + esc(fmtDT(p.ts)) + (p.by ? ' par ' + esc(p.by) : '') + '</span></span><button class="btn sm" data-act="openpdf" data-pid="' + esc(p.id) + '">Ouvrir</button><button class="btn sm bad" data-act="delphoto" data-pid="' + esc(p.id) + '">Retirer</button></div>' }).join('') + '</div>' : '<p class="sv">Aucun PDF ajouté pour l’instant.</p>') +
-    '<div class="seg"><button class="btn pri" data-act="addpdf">Ajouter le PDF du NexDiag</button></div>' +
-    '<h3 style="font-size:18px">Photos de mesure</h3>' +
-    '<div class="seg"><label class="fld" style="flex:1;min-width:200px"><span>Légende</span><input id="xl-mesures" type="text" maxlength="60" placeholder="Ex. capot, zone repeinte" autocomplete="off"></label>' +
-    '<button class="btn" style="align-self:flex-end" data-act="extra" data-phase="mesures">' + CAM + 'Prendre</button>' +
-    '<button class="btn" style="align-self:flex-end" data-act="extragal" data-phase="mesures">Importer</button></div>' +
-    (ph.length ? '<div class="tiles">' + ph.map(function (p) { return '<button class="tile has" data-act="view" data-phase="mesures" data-pid="' + esc(p.id) + '"><img class="ph" loading="lazy" alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><span class="lb">' + esc(p.label || 'Mesure') + '</span></button>' }).join('') + '</div>' : '');
+  return (manuel ? mesPdf(pdfs) : '') + mesPhotos(ph);
 }
+function estManuel(v) { return window.Nexptg.etatNexptg(v, S.nm[v.id] || []).statut === 'manuel' }
 function tabMes(v) {
-  var mes = v.mes || {};
-  return '<div class="sec"><h3>Analyse NexDiag</h3><div id="pg-mes" class="vlist">' + mesBody() + '</div></div>' +
-    '<div class="sec"><h3>Épaisseurs relevées à la main</h3><p class="hint">Facultatif, en microns. Utile quand le PDF de l’appareil n’est pas disponible.</p><div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
-    PANELS.map(function (p) { return '<label class="fld"><span>' + p[1] + '</span><input type="text" inputmode="numeric" maxlength="4" data-mesk="' + p[0] + '" value="' + esc(mes[p[0]] == null ? '' : mes[p[0]]) + '" placeholder="µm"></label>' }).join('') + '</div></div>' +
+  var mes = v.mes || {}, manuel = estManuel(v);
+  return '<div id="pg-nx">' + nexptgHtml(v) + '</div>' +
+    '<div class="sec"><h3>' + (manuel ? 'Mesures manuelles' : 'Analyse NexDiag') + '</h3><div id="pg-mes" class="vlist">' + mesBody(manuel) + '</div></div>' +
+    (manuel ? '<div class="sec"><h3>Épaisseurs relevées à la main</h3><p class="hint">En microns.</p><div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
+      PANELS.map(function (p) { return '<label class="fld"><span>' + p[1] + '</span><input type="text" inputmode="numeric" maxlength="4" data-mesk="' + p[0] + '" value="' + esc(mes[p[0]] == null ? '' : mes[p[0]]) + '" placeholder="µm"></label>' }).join('') + '</div></div>' : '') +
     '<div class="sec"><h3>Notes d’analyse</h3>' + area('mesNotes', 'Remarques (zones repeintes, valeurs suspectes, conseils au client)', { rows: 4 }) + '</div>';
 }
 function sigBlock(field, title, defName) {
@@ -149,6 +171,10 @@ function sigBlock(field, title, defName) {
       '<div class="seg"><button class="btn" data-act="clearpad" data-f="' + field + '">Effacer</button><button class="btn pri" data-act="savesig" data-f="' + field + '">Enregistrer la signature</button></div>') + '</div>';
 }
 function tabSign0(v) {
+  /* Les mesures NexPTG précèdent la signature ; un dossier déjà signé reste consultable. */
+  if (!window.Nexptg.etatNexptg(v, S.nm[v.id] || []).ok && !v.sigRecep && !v.sigClient) {
+    return '<div class="banner">Les mesures NexPTG doivent être validées avant de signer.</div><div class="seg"><button class="btn pri" data-act="tab" data-v="mes">Aller à l’onglet NexPTG</button></div>';
+  }
   return '<div class="banner">Le réceptionnaire et le client signent après avoir relu les informations, les dommages relevés et le travail à réaliser.</div>' +
     sigBlock('sigRecep', 'Signature du réceptionnaire', v.recep) +
     '<label class="tgl sec"><input type="checkbox" id="f-ca" data-f="clientAbsent"' + (v.clientAbsent ? ' checked' : '') + '> Client absent à l’arrivée du véhicule (pas de signature client)</label>' +
@@ -180,11 +206,11 @@ function sheetHead(v) {
   if (S.cur && v.statut && v.statut !== 'brouillon' && v.statut !== 'sorti') {
     seg = '<div class="seg">' + COLS.slice(1).map(function (c) { return '<button class="btn sm' + (v.statut === c[0] ? ' on' : '') + '" data-act="status" data-v="' + c[0] + '">' + c[1] + '</button>' }).join('') + '</div>';
   }
-  var nc = S.cur ? (S.cm[S.cur] || []).length : 0; var tabs = [['infos', 'Informations'], ['photos', 'Photos'], ['dom', 'Dommages et contrôle'], ['mes', 'Mesures'], ['sign', 'Signatures'], ['compl', 'Compléments' + (nc ? ' (' + nc + ')' : '')], ['sortie', 'Sortie']];
+  var nc = S.cur ? (S.cm[S.cur] || []).length : 0; var tabs = [['infos', 'Informations'], ['photos', 'Photos'], ['dom', 'Dommages et contrôle'], ['mes', 'NexPTG'], ['sign', 'Signatures'], ['compl', 'Compléments' + (nc ? ' (' + nc + ')' : '')], ['sortie', 'Sortie']];
   if (!S.cur) tabs = [['infos', 'Informations']];
   return '<div class="sh"><div class="shin"><div class="shrow"><button class="btn" data-act="close">← Tableau</button>' +
     '<div class="ttl">' + plateHtml(v.plaque || '') + '<div>' + esc([v.marque, v.modele].filter(Boolean).join(' ') || 'Nouvelle entrée') + (t ? ' · ' + esc(t.l) : '') + '</div></div>' + seg +
-    (S.cur ? '<button class="btn" data-act="pdf" data-mode="entree">PDF d’entrée (client)</button><button class="btn" data-act="pdf" data-mode="full">PDF complet</button>' : '') +
+    (S.cur ? '<button class="btn" data-act="pdf" data-mode="entree">PDF d’entrée (client)</button><button class="btn" data-act="pdf" data-mode="full">PDF complet</button><button class="btn" data-act="envoiOuvrir">Envoyer au client</button>' : '') +
     ((v.arch && v.arch.length) ? '<span class="chip ok">Dernier PDF archivé ' + esc(fmtDT(v.arch[v.arch.length - 1].ts)) + '</span>' : '') + '<span class="sv" id="sv"></span></div>' +
     '<div class="tabs" role="tablist">' + tabs.map(function (a) { return '<button class="tab" role="tab" aria-selected="' + (S.tab === a[0]) + '" data-act="tab" data-v="' + a[0] + '">' + a[1] + '</button>' }).join('') + '</div></div></div>';
 }
@@ -204,11 +230,12 @@ function tabHtml(v) { return S.tab === 'compl' ? tabCompl(v) : S.tab === 'photos
 export function renderSheet(keepScroll) {
   var sh = $('#sheet'), v = VV(); if (!v) { sh.hidden = true; return }
   var y = keepScroll ? sh.scrollTop : 0;
-  var st = v.statut === 'sorti' ? '<div class="banner">Véhicule sorti le ' + esc(fmtDT(v.sortieAt)) + (v.remisA ? ', récupéré par ' + esc(v.remisA) : '') + (v.remisPar ? ', rendu par ' + esc(v.remisPar) : '') + '. Le dossier reste consultable ; ce qui est découvert ensuite s’ajoute dans Compléments.</div>' : '';
+  var st = v.statut === 'sorti' ? '<div class="banner">Véhicule sorti le ' + esc(fmtDT(v.sortieAt)) + (v.remisA ? ', récupéré par ' + esc(v.remisA) : '') + (v.remisPar ? ', rendu par ' + esc(v.remisPar) : '') + '. Le dossier reste consultable ; ce qui est découvert ensuite s’ajoute dans Compléments.' + (S.unlocked === v.id ? '' : ' <button class="btn" data-act="cancelexit">Annuler la sortie</button>') + '</div>' : '';
   sh.innerHTML = sheetHead(v) + '<div class="body">' + lockBar(v) + st + tabHtml(v) + '</div>' + gate(v);
   sh.hidden = false; document.documentElement.style.overflow = 'hidden';
   sh.scrollTop = y;
   mountPads();
+  if (S.tab === 'mes') nexptgMonter(v);
 }
 /* Marque en rouge les champs obligatoires vides, ouvre l'onglet Informations et amène le premier à l'écran. */
 export function showMissing(keys) {
@@ -247,7 +274,7 @@ export function refreshChrome() {
 }
 export function refreshPhotos() {
   ['entree', 'sortie'].forEach(function (ph) { var el = $('#pg-' + ph); if (el) { var inp = $('#xl-' + ph), val = inp ? inp.value : ''; el.innerHTML = photoGrid(ph); var i2 = $('#xl-' + ph); if (i2) i2.value = val } });
-  var em = $('#pg-mes'); if (em) { var xi = $('#xl-mesures'), xv = xi ? xi.value : ''; em.innerHTML = mesBody(); var x2 = $('#xl-mesures'); if (x2) x2.value = xv }
+  var em = $('#pg-mes'); if (em) { var xi = $('#xl-mesures'), xv = xi ? xi.value : ''; em.innerHTML = mesBody(estManuel(VV())); var x2 = $('#xl-mesures'); if (x2) x2.value = xv }
   refreshChrome();
 }
 

@@ -3,7 +3,7 @@ import { CHECK, FL } from './constants.js';
 export var $ = function (s, r) { return (r || document).querySelector(s) };
 export var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] }) };
 export var api = window.api;
-export var S = { list: [], view: 'board', q: '', f: { type: '', resp: '', retard: false }, cur: null, draft: null, tab: 'infos', photos: [], pm: {}, cm: {}, busy: {}, dmg: 'rayure', lb: null, loaded: false, dberr: '', unlocked: null, snap: null, unlockTs: 0, cdraft: null, invalid: [] };
+export var S = { list: [], view: 'board', q: '', f: { type: '', resp: '', retard: false }, cur: null, draft: null, tab: 'infos', photos: [], pm: {}, cm: {}, nm: {}, busy: {}, dmg: 'rayure', lb: null, loaded: false, dberr: '', unlocked: null, snap: null, unlockTs: 0, cdraft: null, invalid: [] };
 export var queues = {};
 export var pend = {};
 export var T = { tmr: null };

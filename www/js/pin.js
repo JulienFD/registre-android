@@ -69,7 +69,7 @@ function ligne(act, titre, desc, cls) {
 }
 function section(titre, corps) { return '<section class="setsec"><h3>' + titre + '</h3>' + corps + '</section>' }
 async function drawSettings() {
-  var s = await api.settings();
+  var s = await api.settings(), rl = (await api.relaisConf()) || {};
   modalShow('<header class="sethead"><h2>Réglages</h2><button class="btn pri" data-act="closemodal">Fermer</button></header>' +
     '<div class="setgrid">' +
     section('Données et changement de tablette',
@@ -87,6 +87,14 @@ async function drawSettings() {
       '<p class="hint">' + esc(s.archiveDir) + '</p>' +
       ligne('openarch', 'Ouvrir les archives', 'Registre d’intégrité des PDF archivés') +
       ligne('chooseArch', 'Changer le dossier d’archives', 'Protégé par le code PIN')) +
+    section('Relais NexPTG',
+      '<p class="hint">Reçoit les mesures de NexPTG. L’adresse doit commencer par https://. Le mot de passe reste sur cette tablette : il n’est jamais inclus dans une sauvegarde.</p>' +
+      '<label class="fld"><span>Adresse du relais</span><input id="rl-url" type="url" inputmode="url" autocomplete="off" value="' + esc(rl.url || '') + '" placeholder="https://…"></label>' +
+      '<label class="fld"><span>Compte de la tablette</span><input id="rl-compte" type="text" autocomplete="off" value="' + esc(rl.compte || '') + '"></label>' +
+      '<label class="fld"><span>Mot de passe</span><input id="rl-mdp" type="password" autocomplete="off" placeholder="' + (rl.motDePasse ? 'Laisser vide pour conserver l’actuel' : '') + '"></label>' +
+      ligne('relaisSave', 'Enregistrer', 'Protégé par le code PIN') +
+      ligne('relaisTest', 'Tester la connexion', 'Interroge le relais avec les valeurs ci-dessus, sans les enregistrer') +
+      (rl.url ? ligne('relaisClear', 'Supprimer la configuration', 'Les mesures ne seront plus reçues', 'bad') : '')) +
     section('Sécurité',
       '<p class="hint">Le code PIN protège les corrections, le retrait d’éléments et ces réglages.</p>' +
       ligne('changepin', 'Changer le code PIN', 'Demande l’ancien code puis le nouveau')) +
@@ -112,6 +120,30 @@ export function relock() {
 }
 
 export function closeSettings() { SETPIN = null; modalHide() }
+/* Valeurs du formulaire ; un mot de passe laissé vide conserve celui déjà enregistré. */
+async function confRelaisSaisie() {
+  var val = function (id) { var e = $('#' + id); return e ? e.value.trim() : '' };
+  var ancien = (await api.relaisConf()) || {};
+  return { url: val('rl-url'), compte: val('rl-compte'), motDePasse: ($('#rl-mdp') ? $('#rl-mdp').value : '') || ancien.motDePasse || '' };
+}
+export async function saveRelais() {
+  var conf = await confRelaisSaisie();
+  try { window.Relais.creerClient(conf) } catch (e) { toast(window.Relais.messageErreur(e)); return }
+  var r = await api.relaisSet(SETPIN, conf);
+  if (r && r.ok) { toast('Relais enregistré'); drawSettings() } else toast('Opération refusée');
+}
+export async function testRelais() {
+  var client;
+  try { client = window.Relais.creerClient(await confRelaisSaisie()) } catch (e) { toast(window.Relais.messageErreur(e)); return }
+  toast('Test de la connexion…');
+  try {
+    var t = await client.techniciens();
+    toast('Connexion réussie : ' + t.length + ' technicien' + (t.length > 1 ? 's' : '') + (t.length ? ' (' + t.join(', ') + ')' : ''));
+  } catch (e) { toast(window.Relais.messageErreur(e)) }
+}
+export function clearRelais() {
+  api.relaisSet(SETPIN, null).then(function (r) { if (r && r.ok) drawSettings(); else toast('Opération refusée') });
+}
 export function chooseArchive() {
   api.chooseArchive(SETPIN).then(function (r) { if (r && r.ok) drawSettings(); else toast('Opération refusée') });
 }

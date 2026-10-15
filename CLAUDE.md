@@ -4,8 +4,8 @@ App Android (Capacitor 8, WebView) de suivi des véhicules en atelier, pour une 
 
 ## Structure de `www/`
 
-- `index.html` charge les scripts classiques (`android-api.js`, `utils.js`) puis le module `js/main.js`.
-- `js/` : modules ES natifs, sans bundler. `constants.js` (données), `core.js` (état `S`, sauvegarde, utilitaires), `board.js` (tableau), `sheet.js` (fiche et onglets), `compl.js`, `dossier.js` (création, verrouillage), `photos.js`, `camera.js`, `pin.js`, `pdf.js`, `actions.js` (clics), `main.js` (événements et démarrage).
+- `index.html` charge les scripts classiques (`android-api.js`, `utils.js`, `nexptg.js`, `nexptg-geometrie.js`, `nexptg-schema.js`, `nexptg-pdf.js`, `photos-tel.js`, `nexptg-vue.js`, `sauvegarde.js`, `relais.js`) puis le module `js/main.js`. Ces scripts sont de la logique pure (sans DOM), couverte par `tests/` ; `nexptg-geometrie.js` porte les données des schémas (silhouettes, contours des panneaux, points de NexPTG) et `nexptg-schema.js` en calcule les schémas indicatifs (projection, points, teintes), `nexptg-pdf.js` en tire la synthèse du PDF du dossier (plan puis dessin jsPDF), `photos-tel.js` fixe les règles de rattachement des photos prises avec le téléphone et `nexptg-vue.js` produit le HTML de l'onglet NexPTG à partir d'un état.
+- `js/` : modules ES natifs, sans bundler. `constants.js` (données), `core.js` (état `S`, sauvegarde, utilitaires), `board.js` (tableau), `sheet.js` (fiche et onglets), `compl.js`, `dossier.js` (création, verrouillage), `photos.js`, `camera.js`, `pin.js`, `pdf.js`, `nexptg-tab.js` (onglet NexPTG : relais, enregistrement, actions), `photos-tel.js` (récupération des photos du téléphone), `actions.js` (clics), `main.js` (événements et démarrage).
 - `css/` : une feuille par zone (`base`, `sheet`, `fonts`, `modal`, `camera`, `lock`), chargées dans cet ordre par `index.html` (l'ordre compte pour la cascade).
 - Un nouveau code va dans le module de sa responsabilité ; ne pas recréer un fichier fourre-tout. Un module qui dépasse environ 300 lignes se redécoupe.
 
@@ -14,6 +14,7 @@ App Android (Capacitor 8, WebView) de suivi des véhicules en atelier, pour une 
 - `npm run lint` : ESLint (`eslint.config.js`)
 - `npm test` : tests Node (`node --test`, dossier `tests/`)
 - `npm run check` : lint + tests (à lancer avant chaque commit)
+- `npm run dev` : sert la PWA photos sur `http://localhost:3000` avec le vrai code du relais et un stockage en mémoire (compte `demo`, mot de passe `demo-demo-demo`) ; `PORT=… npm run dev` pour changer de port
 - `npx cap sync android` : copie `www/` dans le projet Android
 - `cd android && ./gradlew lintDebug testDebugUnitTest assembleDebug` : lint Android, tests JVM, APK debug
 
@@ -40,9 +41,18 @@ App Android (Capacitor 8, WebView) de suivi des véhicules en atelier, pour une 
 
 - `www/` est le code source de l'app (versionné). Les copies générées par `cap sync` (`android/app/src/main/assets/public/`) ne s'éditent jamais à la main.
 - Changer le code natif seulement si un plugin Capacitor ne suffit pas ; une modification du manifeste passe par `patch-android.js` pour rester reproductible.
-- Aucun secret dans l'app : les données restent locales. Seul appel réseau : la recherche de mise à jour (API GitHub `releases/latest`, HTTPS, dépôt public) ; tout nouvel appel reste en HTTPS uniquement.
+- Aucun secret dans le code ni dans le dépôt. Les données restent locales, sauf deux appels réseau, tous deux en HTTPS uniquement : la recherche de mise à jour (API GitHub `releases/latest`, dépôt public) et le relais NexPTG (`www/relais.js`, qui sert aussi à déposer le PDF du client : `www/js/envoi-pdf.js`). Adresse, compte et mot de passe du relais se saisissent dans les Réglages et vivent dans `config.json` (mémoire privée, jamais sauvegardé). Tout nouvel appel reste en HTTPS ; l'origine doit aussi figurer dans la CSP de `index.html`.
 - Mise à jour automatique : `maj.js` + plugin natif `UpdaterPlugin`. L'APK de release doit toujours être signé avec la même clé (secrets GitHub `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`), sinon Android refuse la mise à jour par-dessus. Ne jamais perdre ni régénérer cette clé.
 - `./gradlew lintDebug` doit passer sans nouvel avertissement.
+
+## Relais NexPTG (`relais/`)
+
+- Fonctions Vercel (`relais/api/`) et logique testée (`relais/lib/`), déployées séparément de l'APK : voir `relais/README.md`. Le code reste **sans secret** ; comptes et jetons sont des variables d'environnement Vercel.
+- Les rapports NexPTG sont conservés bruts (jamais modifiés) ; les corrections du Registre s'ajoutent en surcouche. Identité d'un rapport : `série#id#date de création` ; versions ordonnées par date de **réception**.
+- Sessions de la PWA : mot de passe échangé une fois contre un jeton de rafraîchissement opaque (sans expiration, stocké côté relais sous forme d'empreinte, révocable) et de courts jetons d'accès signés avec un secret que le relais génère et conserve dans le store (`secret/signature.json`, jamais dérivé de `RELAIS_COMPTES`) ; `RELAIS_SECRET` est une surcharge facultative. Aucun mot de passe ne doit être conservé par la PWA. NexPTG et la tablette restent en Basic.
+- PDF du client : déposé par la tablette (`relais/lib/pdf.js`, `PUT /api/pdf`, compte lecteur ; en parties de 3 Mo au-delà de 4 Mo, 20 Mo au plus), il n'est lisible que par un lien secret de 256 bits qui expire au bout de 30 jours (supprimé à l'expiration ou au dépôt suivant). Le relais envoie le mail (SMTP, variables `SMTP_*`, jamais dans le dépôt) ; un PDF volumineux est joint. L'envoi est automatique à la validation de l'entrée et de la sortie (`www/js/envoi-pdf.js`).
+- `relais/public/` contient la PWA photos (modules ES natifs, sans bundler) : `js/pur.mjs` est la logique pure testée (les vues du véhicule y doublent `constants.js`, un test vérifie la synchro) ; le reste dépend du navigateur. Aucun `innerHTML` : le DOM est construit par `js/dom.js`.
+- Un push sur `main` publie une version de l'APK : ne pas fusionner le relais sur `main` sans l'avoir voulu.
 
 ## Tests
 

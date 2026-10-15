@@ -113,14 +113,16 @@ export async function buildPdf(v, photos, mode, cid) {
   ens(46); y += 4; h2("Signatures à l'entrée"); sigs('Réceptionnaire', v.sigRecep, M); sigs('Client', v.sigClient, M + 95); y += 34;
   txt("Les mentions ci-dessus ont été relevées à l'arrivée du véhicule et validées par signature.", M, y, { s: 8, c: mut, w: W - 2 * M });
 
-  async function photoPages(list, title) {
+  /* suite : les photos s'écrivent à la suite de la page en cours, au lieu d'ouvrir une nouvelle page. */
+  async function photoPages(list, title, suite) {
     if (!list.length) return;
-    doc.addPage(); band(title, fmtPlate(v.plaque));
-    var bw = (W - 2 * M - 8) / 2, bh = bw * 0.75, col = 0, row = 0;
+    var bw = (W - 2 * M - 8) / 2, bh = bw * 0.75, col = 0, row = 0, top = 30;
+    if (suite) { ens(bh + 24); h2(title); top = y }
+    else { doc.addPage(); band(title, fmtPlate(v.plaque)) }
     for (var i = 0; i < list.length; i++) {
       var p = list[i];
-      if (row === 3) { doc.addPage(); band(title, fmtPlate(v.plaque)); row = 0; col = 0 }
-      var x = M + col * (bw + 8), yy = 30 + row * (bh + 14);
+      if (suite ? top + row * (bh + 14) + bh + 10 > 282 : row === 3) { doc.addPage(); band(title, fmtPlate(v.plaque)); row = 0; col = 0; top = 30 }
+      var x = M + col * (bw + 8), yy = top + row * (bh + 14);
       txt((p.label || 'Photo'), x, yy, { s: 9, b: 1, w: bw });
       var im = await pdfImg(p);
       if (im) { var r = Math.min(bw / im.w, bh / im.h), w = im.w * r, h = im.h * r; doc.addImage(im.d, 'JPEG', x, yy + 2, w, h) }
@@ -128,6 +130,7 @@ export async function buildPdf(v, photos, mode, cid) {
       txt(fmtDT(p.ts) + (p.by ? ' · ' + p.by : ''), x, yy + bh + 6, { s: 7.5, c: mut, w: bw });
       col++; if (col === 2) { col = 0; row++ }
     }
+    if (suite) y = top + (col ? row + 1 : row) * (bh + 14) + 4;
   }
   await photoPages(es, "PHOTOS D'ENTRÉE");
 
@@ -154,20 +157,33 @@ export async function buildPdf(v, photos, mode, cid) {
       txt('Le PDF joint « ' + p.label + ' » n\'a pas pu être intégré à ce document. Il reste disponible dans le dossier, onglet Mesures.', M, y, { s: 10, w: W - 2 * M });
     }
   }
+  /* Mesures NexPTG : la synthèse (schémas et tableaux) remplace la recopie des pages du PDF NexDiag, qui doublonnait les photos. */
+  var nx = window.Nexptg.etatNexptg(v, S.nm[v.id] || []);
   var mes = v.mes || {}, mrows = PANELS.filter(function (q) { return mes[q[0]] });
   var mph = photos.filter(function (p) { return p.phase === 'mesures' && p.kind !== 'pdf' }).sort(function (a, b) { return a.ts - b.ts });
   var mpd = photos.filter(function (p) { return p.phase === 'mesures' && p.kind === 'pdf' }).sort(function (a, b) { return a.ts - b.ts });
-  if (mode === 'full' && (mrows.length || v.mesNotes || mph.length || mpd.length)) {
+  if (nx.statut === 'recu') {
+    doc.addPage(); band('MESURES NEXPTG', fmtPlate(v.plaque));
+    var dn = nx.derniere, plan = window.NexptgPdf.planSynthese(window.Nexptg.lireRapport(dn.brut), { recu: dn.recu, par: dn.par, nbVersions: nx.nbVersions, avertissements: dn.avertissements });
+    y = window.NexptgPdf.dessiner(doc, plan, { x0: M, largeur: W - 2 * M, y: y, assurer: function (hh, yc) { if (yc + hh > 282) { doc.addPage(); band('MESURES NEXPTG (suite)', fmtPlate(v.plaque)); return y } return yc } });
+    if (mpd.length) { ens(10); y += 3; txt('Le PDF NexDiag importé (' + mpd.map(function (p) { return p.label }).join(', ') + ') reste joint au dossier ; il n’est pas recopié ici.', M, y, { s: 8, c: mut, w: W - 2 * M }) }
+  } else if (nx.statut === 'termine') {
+    doc.addPage(); band('MESURES NEXPTG', fmtPlate(v.plaque));
+    h2('Terminé sans rapport NexPTG'); para('Motif', nx.termine.motif);
+    txt('Par ' + (nx.termine.par || '-') + ' le ' + fmtDT(nx.termine.at) + '. Aucune mesure NexPTG n’est jointe à ce dossier.', M, y, { s: 9, c: mut, w: W - 2 * M });
+  }
+  var mpdRecopie = nx.statut === 'recu' ? [] : mpd;
+  if (mode === 'full' && (mrows.length || v.mesNotes)) {
     doc.addPage(); band("MESURES D'ÉPAISSEUR", fmtPlate(v.plaque));
     if (mrows.length) {
       h2('Épaisseurs relevées (microns)'); var c3 = (W - 2 * M) / 3;
       mrows.forEach(function (q, i) { if (i > 0 && i % 3 === 0) y += 11; kv(q[1], mes[q[0]] + ' µm', M + (i % 3) * c3, c3 - 3) }); y += 14;
     }
     para('Notes d\'analyse', v.mesNotes);
-    if (!mrows.length && !v.mesNotes) { txt(mpd.length ? 'Analyse de l\'appareil jointe aux pages suivantes.' : 'Photos de mesure aux pages suivantes.', M, y, { s: 10 }) }
-    await photoPages(mph, 'PHOTOS DE MESURE');
-    for (var qi = 0; qi < mpd.length; qi++)await pdfPages(mpd[qi]);
   }
+  /* Les photos de mesure suivent directement les mesures, sans page d'annonce. */
+  await photoPages(mph, 'Photos de mesure', true);
+  if (mode === 'full') for (var qi = 0; qi < mpdRecopie.length; qi++) await pdfPages(mpdRecopie[qi]);
 
   if (mode === 'full' && cl.length) { doc.addPage(); band('COMPLÉMENTS AU DOSSIER', fmtPlate(v.plaque)); await complements(cl) }
   if (mode === 'full' && (v.statut === 'sorti' || xs.length)) {

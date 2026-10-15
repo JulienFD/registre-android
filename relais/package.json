@@ -1,0 +1,13 @@
+{
+  "name": "registre-relais",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Relais Vercel du Registre : réception des synchronisations NexPTG",
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.1",
+    "nodemailer": "^10.1.1"
+  }
+}

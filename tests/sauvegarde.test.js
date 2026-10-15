@@ -2,13 +2,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { cheminSauvegardeValide, enteteSauvegarde, lireEnteteSauvegarde, nomSauvegarde, crc32, zipEnteteLocale, zipEntreeCentrale, zipFin, zipLireFin, zipLireCentrale, zipDebutDonnees } = require('../www/sauvegarde.js');
 
-test('cheminSauvegardeValide accepte les fichiers de dossiers, photos, compléments et archives', () => {
+test('cheminSauvegardeValide accepte les fichiers de dossiers, photos, compléments, rapports NexPTG et archives', () => {
   for (const p of [
     'vehicules/a1/dossier.json',
     'vehicules/a1/photos/p_2.json',
     'vehicules/a1/photos/p_2.jpg',
     'vehicules/a1/photos/p_2.pdf',
     'vehicules/a1/compl/c1.json',
+    'vehicules/a1/nexptg/e5491ac50712a9437a855088ac0e761e78147da9f608c6de5ccef9c661f26d3f.json',
     'archives/Entrees/2026/EDL-ENTREE_AB123CD_2026-10-08.pdf',
     'archives/Dossiers/2026/DOSSIER-COMPLET_AB123CD_2026-10-08_1760000000000.pdf',
     'archives/REGISTRE-INTEGRITE.csv',
@@ -23,6 +24,9 @@ test('cheminSauvegardeValide refuse la configuration (PIN) et tout chemin hors d
     'vehicules/a1/../../config.json',
     'vehicules/a1/photos/../../x.json',
     'vehicules/a1/compl/c1.jpg',
+    'vehicules/a1/nexptg/x.jpg',
+    'vehicules/a1/nexptg/../../config.json',
+    'vehicules/a1/nexptg/a/b.json',
     'vehicules/a1/photos/p.exe',
     '/vehicules/a1/dossier.json',
     'archives/../config.json',

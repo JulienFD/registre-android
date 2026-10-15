@@ -2,6 +2,7 @@ import { renderMain } from './board.js';
 import { camClose } from './camera.js';
 import { FL } from './constants.js';
 import { $, S, V, VV, api, esc, flush, hist, lastWho, missingForCreate, normPlate, plateValid, queues, save, setSave, snapOf, toast } from './core.js';
+import { envoiAuto } from './envoi-pdf.js';
 import { makePdf } from './pdf.js';
 import { modalShow } from './pin.js';
 import { refreshChrome, renderSheet, showMissing } from './sheet.js';
@@ -55,7 +56,7 @@ var SIGLAB = { sigRecep: 'du réceptionnaire', sigClient: 'du client' };
 export function validateEntry() {
   var v3 = VV(); if (!v3 || v3.statut !== 'brouillon') return;
   S.unlocked = null; S.snap = null;
-  save({ statut: 'atelier', entreeAt: Date.now(), hist: hist(v3, 'Entrée validée : le dossier est verrouillé') }).then(function () { toast('Entrée validée, dossier en atelier'); return makePdf('entree', true) });
+  save({ statut: 'atelier', entreeAt: Date.now(), hist: hist(v3, 'Entrée validée : le dossier est verrouillé') }).then(function () { toast('Entrée validée, dossier en atelier'); return makePdf('entree', true) }).then(function (r) { return envoiAuto('entree', r) });
   renderSheet();
 }
 /* f = signature qui vient d'être posée : si le verrouillage est refusé, elle est retirée. */
