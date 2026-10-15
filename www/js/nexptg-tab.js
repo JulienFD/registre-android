@@ -116,12 +116,19 @@ export function nexptgMonter(v) {
   if (st === 'recu' && v.statut === 'brouillon') suivre();
 }
 
+export async function nxMode(mode) {
+  var v = VV(); if (!v || (mode !== 'auto' && mode !== 'manuel')) return;
+  await save({ nexptg: Object.assign({}, v.nexptg || {}, { mode: mode }), hist: hist(v, 'Mesures NexPTG : mode ' + (mode === 'auto' ? 'automatique' : 'manuel')) });
+  renderSheet(true);
+  nexptgMonter(VV());
+}
+
 export async function nxCommencer() {
   var v = VV(); if (!v) return;
   var sel = $('#nx-qui'), qui = sel ? sel.value : '';
   if (!qui) { toast('Choisir qui va prendre les mesures'); return }
   E.erreur = ''; E.candidats = []; E.derniere = 0;
-  await save({ nexptg: { qui: qui, debutAt: Date.now() }, hist: hist(v, 'Mesures NexPTG commencées (technicien ' + qui + ')') });
+  await save({ nexptg: Object.assign({}, v.nexptg || {}, { qui: qui, debutAt: Date.now() }), hist: hist(v, 'Mesures NexPTG commencées (technicien ' + qui + ')') });
   renderSheet(true);
   nexptgMonter(VV());
 }

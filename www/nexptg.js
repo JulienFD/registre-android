@@ -113,6 +113,7 @@
     var nx = (dossier && dossier.nexptg) || {};
     var derniere = derniereVersion(versions);
     if (derniere) return { statut: 'recu', ok: true, derniere: derniere, termine: null, nbVersions: tableau(versions).length };
+    if (nx.mode === 'manuel') return { statut: 'manuel', ok: true, derniere: null, termine: null, nbVersions: 0 };
     if (termineValide(nx.termine)) return { statut: 'termine', ok: true, derniere: null, termine: nx.termine, nbVersions: 0 };
     return { statut: nx.debutAt ? 'mesures' : 'attente', ok: false, derniere: null, termine: null, nbVersions: 0 };
   }

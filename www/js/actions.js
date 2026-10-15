@@ -6,7 +6,7 @@ import { $, S, TAMPON, VV, entryErrors, api, flush, hist, save, srcOf, toast } f
 import { autoCreate, closeSheet, createDossier, lockConfirm, newEntry, openDossier, undoSig, validateEntry } from './dossier.js';
 import { installerMiseAJour, verifierMiseAJour } from './maj.js';
 import { telAjouter, telBasculer, telChoisir, telRecuperer } from './photos-tel.js';
-import { nxChoisir, nxCommencer, nxPoint, nxRecharger, nxTermine, nxTermineOk, nxVerifier } from './nexptg-tab.js';
+import { nxChoisir, nxCommencer, nxMode, nxPoint, nxRecharger, nxTermine, nxTermineOk, nxVerifier } from './nexptg-tab.js';
 import { envoiAuto, envoiCopier, envoiMail, envoiOuvrir, envoiPartage, envoiPdf } from './envoi-pdf.js';
 import { makePdf } from './pdf.js';
 import { canShoot, commitPhoto, complSink, delPhoto, doImport, handlePdf, startQueue } from './photos.js';
@@ -96,6 +96,7 @@ export function act(a, b) {
   if (a === 'telChoisir') { telChoisir(); return }
   if (a === 'telBasculer') { telBasculer(b); return }
   if (a === 'telAjouter') { telAjouter(); return }
+  if (a === 'nxMode') { nxMode(d.mode); return }
   if (a === 'nxCommencer') { nxCommencer(); return }
   if (a === 'nxVerifier') { nxVerifier(); return }
   if (a === 'nxPoint') { nxPoint(d); return }

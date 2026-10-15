@@ -16,11 +16,26 @@
     return '<button class="btn' + (classe ? ' ' + classe : '') + '" data-act="' + act + '"' + (attrs || '') + '>' + texte + '</button>';
   }
 
+  function etapes(ctx) {
+    return '<ol class="hint nx-etapes"><li>Dans NexPTG, créer un rapport avec le champ supplémentaire <b>Immatriculation</b> = <b>' + esc(ctx.plaque) + '</b>.</li>' +
+      '<li>Prendre les mesures, puis <b>Sauvegarder</b> : le rapport arrive ici tout seul.</li></ol>';
+  }
+
+  function choixMode() {
+    return '<p class="hint">Comment les mesures sont-elles prises ?</p><div class="seg">' +
+      bouton('nxMode', 'Automatique', 'pri', ' data-mode="auto"') + bouton('nxMode', 'Manuel', '', ' data-mode="manuel"') + '</div>' +
+      '<p class="hint"><b>Automatique</b> : le rapport NexPTG arrive tout seul. <b>Manuel</b> : PDF, photos et épaisseurs saisis à la main.</p>';
+  }
+
+  function vueManuel() {
+    return '<p>Mode <b>manuel</b> : ajouter le PDF, les photos et les épaisseurs ci-dessous.</p><div class="seg">' + bouton('nxMode', 'Passer en automatique', '', ' data-mode="auto"') + '</div>';
+  }
+
   function vueAttente(ctx) {
     var corps;
     if (!ctx.relaisConfigure) {
       corps = '<div class="banner">Le relais NexPTG n’est pas configuré : ouvrir les <b>Réglages</b> (en haut à droite), section <b>Relais NexPTG</b>. ' +
-        'Sans relais, les mesures ne peuvent pas être reçues ; « Terminé sans rapport » reste possible avec un motif.</div>';
+        'Sans relais, les mesures ne peuvent pas être reçues : passer en mode manuel.</div>';
     } else if (ctx.techniciens === null) {
       corps = ctx.erreurTechniciens
         ? '<p class="nx-err">' + esc(ctx.erreurTechniciens) + '</p>' + bouton('nxRecharger', 'Réessayer')
@@ -32,9 +47,9 @@
       corps = '<label class="fld"><span>Qui va prendre les mesures ?</span><select id="nx-qui">' +
         (seul ? '' : '<option value="">Choisir un technicien</option>') +
         ctx.techniciens.map(function (n) { return '<option value="' + esc(n) + '"' + (seul ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') +
-        '</select></label>' + bouton('nxCommencer', 'Commencer les mesures', 'pri');
+        '</select></label>' + etapes(ctx) + bouton('nxCommencer', 'Commencer les mesures', 'pri');
     }
-    return corps + '<div class="seg">' + bouton('nxTermine', 'Terminé sans rapport') + '</div>';
+    return corps + '<div class="seg">' + bouton('nxMode', 'Passer en manuel', '', ' data-mode="manuel"') + '</div>';
   }
 
   function vueCandidats(ctx) {
@@ -50,12 +65,11 @@
   function vueMesures(etat, ctx, dossier) {
     var qui = (dossier.nexptg && dossier.nexptg.qui) || '';
     return '<p>En attente du rapport de <b>' + esc(qui) + '</b>.</p>' +
-      '<ol class="hint nx-etapes"><li>Dans NexPTG, créer un rapport avec le champ supplémentaire <b>Immatriculation</b> = <b>' + esc(ctx.plaque) + '</b>.</li>' +
-      '<li>Prendre les mesures, puis <b>Sauvegarder</b> : le rapport arrive ici tout seul.</li></ol>' +
+      etapes(ctx) +
       (ctx.erreur ? '<p class="nx-err">' + esc(ctx.erreur) + '</p>' : '') +
       '<p class="hint">' + (ctx.occupe ? 'Vérification en cours…' : ctx.derniereVerif ? 'Dernière vérification à ' + esc(heure(ctx.derniereVerif)) + '.' : 'Vérification automatique toutes les quelques secondes.') + '</p>' +
       vueCandidats(ctx) +
-      '<div class="seg">' + bouton('nxVerifier', 'Vérifier maintenant', 'pri') + bouton('nxTermine', 'Terminé sans rapport') + '</div>';
+      '<div class="seg">' + bouton('nxVerifier', 'Vérifier maintenant', 'pri') + bouton('nxMode', 'Passer en manuel', '', ' data-mode="manuel"') + bouton('nxTermine', 'Terminé sans rapport') + '</div>';
   }
 
   function chips(valeurs) {
@@ -171,6 +185,8 @@
     if (etat.statut === 'recu') return vueRecu(etat, ctx);
     if (etat.statut === 'termine') corps = vueTermine(etat);
     else if (etat.statut === 'mesures') corps = vueMesures(etat, ctx, dossier);
+    else if (etat.statut === 'manuel') corps = vueManuel();
+    else if (!(dossier.nexptg && dossier.nexptg.mode === 'auto')) corps = choixMode();
     else corps = vueAttente(ctx);
     return '<div class="sec"><h3>Mesures NexPTG</h3>' + corps + '</div>';
   }

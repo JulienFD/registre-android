@@ -122,26 +122,33 @@ function tabDom0(v) {
     '<div class="sec"><h3>Contrôle point par point</h3><div>' + ch + '</div></div>';
 }
 
-function mesBody() {
-  var by = function (a, b) { return a.ts - b.ts };
-  var pdfs = S.photos.filter(function (p) { return p.phase === 'mesures' && p.kind === 'pdf' }).sort(by);
-  var ph = S.photos.filter(function (p) { return p.phase === 'mesures' && p.kind !== 'pdf' }).sort(by);
-  return '<h3 style="font-size:18px">PDF reçu du NexDiag</h3><p class="hint">Dans le mail envoyé par le NexDiag, enregistrer la pièce jointe sur le PC, puis la choisir ici. Ses pages sont ajoutées au PDF final du véhicule.</p>' +
+function mesPdf(pdfs) {
+  return '<h3 style="font-size:18px">PDF du NexDiag</h3><p class="hint">Dans le mail envoyé par le NexDiag, enregistrer la pièce jointe sur le PC, puis la choisir ici. Ses pages sont ajoutées au PDF final du véhicule.</p>' +
     (pdfs.length ? '<div class="vlist">' + pdfs.map(function (p) { return '<div class="arow"><span class="grow"><b>' + esc(p.label) + '</b><br><span class="sv">Ajouté le ' + esc(fmtDT(p.ts)) + (p.by ? ' par ' + esc(p.by) : '') + '</span></span><button class="btn sm" data-act="openpdf" data-pid="' + esc(p.id) + '">Ouvrir</button><button class="btn sm bad" data-act="delphoto" data-pid="' + esc(p.id) + '">Retirer</button></div>' }).join('') + '</div>' : '<p class="sv">Aucun PDF ajouté pour l’instant.</p>') +
-    '<div class="seg"><button class="btn pri" data-act="addpdf">Ajouter le PDF du NexDiag</button></div>' +
-    '<h3 style="font-size:18px">Photos de mesure</h3>' +
+    '<div class="seg"><button class="btn pri" data-act="addpdf">Ajouter le PDF du NexDiag</button></div>';
+}
+function mesPhotos(ph) {
+  return '<h3 style="font-size:18px">Photos de mesure</h3>' +
     '<div class="seg"><label class="fld" style="flex:1;min-width:200px"><span>Légende</span><input id="xl-mesures" type="text" maxlength="60" placeholder="Ex. capot, zone repeinte" autocomplete="off"></label>' +
     '<button class="btn" style="align-self:flex-end" data-act="extra" data-phase="mesures">' + CAM + 'Prendre</button>' +
     '<button class="btn" style="align-self:flex-end" data-act="extragal" data-phase="mesures">Importer</button>' +
     '<button class="btn" style="align-self:flex-end" data-act="telRecuperer">Photos du téléphone</button></div>' +
     (ph.length ? '<div class="tiles">' + ph.map(function (p) { return '<button class="tile has" data-act="view" data-phase="mesures" data-pid="' + esc(p.id) + '"><img class="ph" loading="lazy" alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><span class="lb">' + esc(p.label || 'Mesure') + '</span></button>' }).join('') + '</div>' : '');
 }
+/* Le PDF NexDiag et les épaisseurs saisies n'existent qu'en mode manuel ; en automatique, le rapport du relais les remplace. */
+function mesBody(manuel) {
+  var by = function (a, b) { return a.ts - b.ts };
+  var pdfs = S.photos.filter(function (p) { return p.phase === 'mesures' && p.kind === 'pdf' }).sort(by);
+  var ph = S.photos.filter(function (p) { return p.phase === 'mesures' && p.kind !== 'pdf' }).sort(by);
+  return (manuel ? mesPdf(pdfs) : '') + mesPhotos(ph);
+}
+function estManuel(v) { return window.Nexptg.etatNexptg(v, S.nm[v.id] || []).statut === 'manuel' }
 function tabMes(v) {
-  var mes = v.mes || {};
+  var mes = v.mes || {}, manuel = estManuel(v);
   return '<div id="pg-nx">' + nexptgHtml(v) + '</div>' +
-    '<div class="sec"><h3>Analyse NexDiag</h3><div id="pg-mes" class="vlist">' + mesBody() + '</div></div>' +
-    '<div class="sec"><h3>Épaisseurs relevées à la main</h3><p class="hint">Facultatif, en microns. Utile quand le PDF de l’appareil n’est pas disponible.</p><div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
-    PANELS.map(function (p) { return '<label class="fld"><span>' + p[1] + '</span><input type="text" inputmode="numeric" maxlength="4" data-mesk="' + p[0] + '" value="' + esc(mes[p[0]] == null ? '' : mes[p[0]]) + '" placeholder="µm"></label>' }).join('') + '</div></div>' +
+    '<div class="sec"><h3>' + (manuel ? 'Mesures manuelles' : 'Analyse NexDiag') + '</h3><div id="pg-mes" class="vlist">' + mesBody(manuel) + '</div></div>' +
+    (manuel ? '<div class="sec"><h3>Épaisseurs relevées à la main</h3><p class="hint">En microns.</p><div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
+      PANELS.map(function (p) { return '<label class="fld"><span>' + p[1] + '</span><input type="text" inputmode="numeric" maxlength="4" data-mesk="' + p[0] + '" value="' + esc(mes[p[0]] == null ? '' : mes[p[0]]) + '" placeholder="µm"></label>' }).join('') + '</div></div>' : '') +
     '<div class="sec"><h3>Notes d’analyse</h3>' + area('mesNotes', 'Remarques (zones repeintes, valeurs suspectes, conseils au client)', { rows: 4 }) + '</div>';
 }
 function sigBlock(field, title, defName) {
@@ -256,7 +263,7 @@ export function refreshChrome() {
 }
 export function refreshPhotos() {
   ['entree', 'sortie'].forEach(function (ph) { var el = $('#pg-' + ph); if (el) { var inp = $('#xl-' + ph), val = inp ? inp.value : ''; el.innerHTML = photoGrid(ph); var i2 = $('#xl-' + ph); if (i2) i2.value = val } });
-  var em = $('#pg-mes'); if (em) { var xi = $('#xl-mesures'), xv = xi ? xi.value : ''; em.innerHTML = mesBody(); var x2 = $('#xl-mesures'); if (x2) x2.value = xv }
+  var em = $('#pg-mes'); if (em) { var xi = $('#xl-mesures'), xv = xi ? xi.value : ''; em.innerHTML = mesBody(estManuel(VV())); var x2 = $('#xl-mesures'); if (x2) x2.value = xv }
   refreshChrome();
 }
 

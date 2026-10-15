@@ -16,24 +16,24 @@ const env = (extra) => Object.assign({ sha256: 'a'.repeat(64), recu: 17918877640
 const rendre = (dossier, versions, ctx) => vue(etatNexptg(dossier, versions), Object.assign({}, CTX, ctx), dossier);
 
 test('en attente, on choisit qui mesure parmi les techniciens du relais', () => {
-  const h = rendre({}, []);
+  const h = rendre({ nexptg: { mode: 'auto' } }, []);
   assert.match(h, /Qui va prendre les mesures/);
   assert.match(h, /<select id="nx-qui"/);
   assert.match(h, /<option value="elwen">elwen<\/option>/);
   assert.match(h, /<option value="julien">julien<\/option>/);
   assert.match(h, /data-act="nxCommencer"/);
-  assert.match(h, /data-act="nxTermine"/);
+  assert.match(h, /data-act="nxMode" data-mode="manuel"/);
 });
 
-test('sans relais configuré, on est renvoyé aux réglages et « Terminé » reste possible', () => {
-  const h = rendre({}, [], { relaisConfigure: false, techniciens: null });
+test('sans relais configuré, on est renvoyé aux réglages et le mode manuel reste possible', () => {
+  const h = rendre({ nexptg: { mode: 'auto' } }, [], { relaisConfigure: false, techniciens: null });
   assert.match(h, /Réglages/);
   assert.equal(/data-act="nxCommencer"/.test(h), false);
-  assert.match(h, /data-act="nxTermine"/);
+  assert.match(h, /data-act="nxMode" data-mode="manuel"/);
 });
 
 test('une erreur de chargement des techniciens est affichée, avec possibilité de réessayer', () => {
-  const h = rendre({}, [], { techniciens: null, erreurTechniciens: 'Relais injoignable : vérifier la connexion de la tablette' });
+  const h = rendre({ nexptg: { mode: 'auto' } }, [], { techniciens: null, erreurTechniciens: 'Relais injoignable : vérifier la connexion de la tablette' });
   assert.match(h, /Relais injoignable/);
   assert.match(h, /data-act="nxRecharger"/);
 });
@@ -176,4 +176,28 @@ test('un élément inconnu de NexPTG reste visible dans un tableau « sans sché
   assert.match(h, /Sans schéma/);
   assert.match(h, /LEFT_&lt;MIRROR&gt;/);
   assert.equal(h.includes('LEFT_<MIRROR>'), false);
+});
+
+test('sans mode choisi, on propose Automatique ou Manuel et rien d\'autre', () => {
+  const h = rendre({}, []);
+  assert.match(h, /data-act="nxMode" data-mode="auto"/);
+  assert.match(h, /data-act="nxMode" data-mode="manuel"/);
+  assert.equal(/<select id="nx-qui"/.test(h), false);
+  assert.equal(/data-act="nxTermine"/.test(h), false);
+});
+
+test('en automatique, on voit qui mesure et le déroulé avant de commencer', () => {
+  const h = rendre({ nexptg: { mode: 'auto' } }, []);
+  assert.match(h, /<select id="nx-qui"/);
+  assert.match(h, /Immatriculation/);
+  assert.match(h, /AB-123-CD/);
+  assert.match(h, /data-act="nxCommencer"/);
+  assert.match(h, /data-act="nxMode" data-mode="manuel"/);
+});
+
+test('en manuel, aucun choix de technicien : seulement le moyen de changer de mode', () => {
+  const h = rendre({ nexptg: { mode: 'manuel' } }, []);
+  assert.equal(/<select id="nx-qui"/.test(h), false);
+  assert.equal(/nxCommencer/.test(h), false);
+  assert.match(h, /data-act="nxMode" data-mode="auto"/);
 });

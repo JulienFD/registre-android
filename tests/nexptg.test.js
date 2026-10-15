@@ -326,3 +326,21 @@ test('categorie associe un code d\'interprétation à une classe et un libellé,
   assert.deepEqual(categorie(-2), { classe: 'nx-i-ignore', libelle: 'Mesure ignorée' });
   assert.deepEqual(categorie(99), { classe: 'nx-i-na', libelle: 'Non classée' });
 });
+
+// --- mode manuel : le technicien saisit PDF, photos et épaisseurs lui-même ---
+
+test('le mode manuel valide le dossier sans rapport ni technicien', () => {
+  const e = etatNexptg({ nexptg: { mode: 'manuel' } }, []);
+  assert.equal(e.statut, 'manuel');
+  assert.equal(e.ok, true);
+});
+
+test('un rapport reçu prime sur le mode manuel', () => {
+  assert.equal(etatNexptg({ nexptg: { mode: 'manuel' } }, [env('a', 2000)]).statut, 'recu');
+});
+
+test('le mode automatique seul ne valide rien', () => {
+  const e = etatNexptg({ nexptg: { mode: 'auto' } }, []);
+  assert.equal(e.statut, 'attente');
+  assert.equal(e.ok, false);
+});
