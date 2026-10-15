@@ -1,4 +1,4 @@
-import { $, S, VV, api, esc, fmtDT, hist, save, toast } from './core.js';
+import { S, VV, api, esc, fmtDT, hist, save, toast } from './core.js';
 import { modalShow } from './pin.js';
 import { makePdf } from './pdf.js';
 import { renderSheet } from './sheet.js';
@@ -16,12 +16,21 @@ async function client() {
   try { return R.creerClient(conf) } catch (e) { return null }
 }
 
+/* L'adresse est toujours celle de la fiche du client : elle ne se saisit pas ici (un envoi ne peut pas partir vers une autre adresse). */
+function adresseFiche(v) {
+  var m = String(v.clientMail || '').trim();
+  return MAIL.test(m) ? m : '';
+}
+
 export function envoiOuvrir() {
   var v = VV(); if (!v || !S.cur) return;
+  var mail = adresseFiche(v);
   modalShow('<h2>Envoyer le PDF au client</h2>' +
-    '<p class="hint">Le PDF est déposé sur le serveur, qui envoie au client un mail avec un lien de téléchargement valable 30 jours. Un PDF volumineux est joint au mail.</p>' +
-    '<label class="fld"><span>E-mail du client <em>*</em></span><input id="env-mail" type="email" autocomplete="off" value="' + esc(v.clientMail || '') + '"></label>' +
-    '<div class="mrow2"><button class="btn pri" data-act="envoiPdf" data-mode="entree">PDF d’entrée</button><button class="btn pri" data-act="envoiPdf" data-mode="full">PDF complet</button></div>' +
+    (mail
+      ? '<p>Adresse du client : <strong>' + esc(mail) + '</strong></p>' +
+        '<p class="hint">Le PDF est déposé sur le serveur, qui envoie au client un mail avec un lien de téléchargement valable 30 jours. Un PDF volumineux est joint au mail. Pour changer l’adresse, la modifier dans la fiche, onglet Informations.</p>' +
+        '<div class="mrow2"><button class="btn pri" data-act="envoiPdf" data-mode="entree">PDF d’entrée</button><button class="btn pri" data-act="envoiPdf" data-mode="full">PDF complet</button></div>'
+      : '<p class="hint">Aucune adresse e-mail valable dans la fiche du client. La renseigner dans l’onglet Informations, puis recommencer.</p>') +
     '<div class="mrow2"><button class="btn" data-act="closemodal">Annuler</button></div>');
 }
 
@@ -69,12 +78,11 @@ function ecranResultat(res) {
 export async function envoiPdf(mode) {
   var v = VV(); if (!v || !S.cur) return;
   mode = mode === 'full' ? 'full' : 'entree';
-  var champ = $('#env-mail'), mail = champ ? champ.value.trim() : '';
-  if (!MAIL.test(mail)) { toast('Saisir une adresse e-mail valide'); return }
+  var mail = adresseFiche(v);
+  if (!mail) { toast('Aucune adresse e-mail valable dans la fiche du client'); return }
   toast('Envoi du PDF au client…');
   try {
     var res = await transmettre(v, mode, mail, false);
-    if (!v.clientMail) save({ clientMail: mail });
     renderSheet(true);
     ecranResultat(res);
   } catch (e) { toast('Envoi impossible : ' + (e && e.code ? R.messageErreur(e) : (e && e.message) || 'erreur')) }
@@ -85,9 +93,10 @@ export async function envoiPdf(mode) {
 export async function envoiAuto(mode, archive) {
   var v = VV(); if (!v || !S.cur || !archive) return;
   if ((v.envois || []).some(function (e) { return e.auto && e.mode === mode && e.envoye })) return;
-  if (!MAIL.test(String(v.clientMail || '').trim())) { toast(LIB[mode] + ' non envoyé : aucune adresse e-mail du client dans la fiche'); return }
+  var mail = adresseFiche(v);
+  if (!mail) { toast(LIB[mode] + ' non envoyé : aucune adresse e-mail valable dans la fiche du client'); return }
   try {
-    var res = await transmettre(v, mode, v.clientMail.trim(), true, archive);
+    var res = await transmettre(v, mode, mail, true, archive);
     renderSheet(true);
     toast(R.resumeEnvoi(res));
   } catch (e) { toast('Envoi automatique impossible : ' + (e && e.code ? R.messageErreur(e) : (e && e.message) || 'erreur') + '. Utiliser « Envoyer au client ».') }
