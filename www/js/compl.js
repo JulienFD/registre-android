@@ -1,17 +1,25 @@
 import { CAM, CK, ckLabel } from './constants.js';
-import { S, V, api, esc, fmtDT, hist, lastWho, save, srcOf, toast } from './core.js';
+import { S, V, VV, api, esc, fmtDT, hist, lastWho, save, srcOf, toast } from './core.js';
 import { makePdf } from './pdf.js';
 import { reclamerTel } from './photos-tel.js';
 import { renderSheet } from './sheet.js';
 
 export function getCd() { return S.cdraft || (S.cdraft = { by: lastWho(), kind: 'lavage', text: '', pics: [] }) }
+/* Même choix que les photos d'entrée : celles du téléphone, ou la tablette (prise de vue ou galerie). */
+function picsBar() {
+  var mode = window.PhotosTel.modePhotos(VV(), 'compl');
+  var btn = function (m, texte, cls) { return '<button class="btn' + (cls ? ' ' + cls : '') + '" data-act="photosMode" data-phase="compl" data-mode="' + m + '">' + texte + '</button>' };
+  if (!mode) return '<p class="hint">Comment ajouter les photos ?</p><div class="pickrow">' + btn('tel', 'Avec le téléphone', 'pri') + btn('tablette', 'Avec la tablette') + '</div>';
+  if (mode === 'tel') return '<div class="pickrow"><button class="btn pri" data-act="telChoisir">Choisir les photos du téléphone</button>' + btn('tablette', 'Passer à la tablette') + '</div>';
+  return '<div class="pickrow"><button class="btn pri" data-act="cdshoot">' + CAM + 'Prendre des photos</button><button class="btn" data-act="cdimport">Importer des images</button>' + btn('tel', 'Passer au téléphone') + '</div>';
+}
 export function tabCompl() {
   var d = getCd(), list = (S.cm[S.cur] || []).slice().sort(function (a, b) { return b.ts - a.ts });
   return '<div class="sec"><h3>Ajouter un complément</h3><p class="hint">Pour tout ce qui est découvert après l’entrée (après le lavage, en cours de travaux) : texte et photos s’ajoutent à la suite, datés et signés. Rien de ce qui a été enregistré avant n’est modifié ni effacé.</p>' +
     '<div class="grid2"><label class="fld"><span>Qui ajoute <em>*</em></span><input id="cd-by" type="text" list="people" maxlength="40" value="' + esc(d.by) + '" autocomplete="off"></label>' +
     '<label class="fld"><span>Nature</span><select id="cd-kind">' + CK.map(function (c) { return '<option value="' + c[0] + '"' + (d.kind === c[0] ? ' selected' : '') + '>' + c[1] + '</option>' }).join('') + '</select></label></div>' +
     '<label class="fld"><span>Ce qui est constaté <em>*</em></span><textarea id="cd-text" rows="3" maxlength="1000" placeholder="Ex. rayure sur l’aile arrière droite visible après lavage">' + esc(d.text) + '</textarea></label>' +
-    '<div class="pickrow"><button class="btn" data-act="cdshoot">' + CAM + 'Prendre des photos</button><button class="btn" data-act="cdimport">Importer des images</button><button class="btn" data-act="telChoisir">Photos du téléphone</button></div>' +
+    picsBar() +
     (d.pics.length ? '<div class="tiles">' + d.pics.map(function (p) { return '<div class="tile has"><img class="ph" alt="" src="' + esc(p.url) + '"><span class="lb">' + esc(p.label) + '</span></div>' }).join('') + '</div>' : '') +
     '<div class="seg"><button class="btn pri" data-act="cdsave">Enregistrer le complément</button>' + (d.pics.length ? '<button class="btn" data-act="cdclear">Retirer ces photos</button>' : '') + '</div></div>' +
     '<div class="sec"><h3>Compléments enregistrés (' + list.length + ')</h3>' + (list.length ? '<div class="tl">' + list.map(function (c) {
