@@ -55,7 +55,13 @@
     return { auto: auto, complements: complements, ignores: ignores };
   }
 
-  var PhotosTel = { plan: plan };
+  // Mode choisi pour une phase (« tel » ou « tablette ») ; vide tant que rien n'est choisi.
+  function modePhotos(dossier, phase) {
+    var m = dossier && dossier.photosMode && dossier.photosMode[phase];
+    return m === 'tel' || m === 'tablette' ? m : '';
+  }
+
+  var PhotosTel = { plan: plan, modePhotos: modePhotos };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = PhotosTel;
   else root.PhotosTel = PhotosTel;

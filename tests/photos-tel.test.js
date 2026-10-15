@@ -89,3 +89,11 @@ test('les photos à importer sont triées dans l\'ordre de l\'application', () =
   const r = p([ph(1, { slot: 'ar' }), ph(2, { slot: 'avg' }), ph(3, { slot: 'av' })]);
   assert.deepEqual(r.auto.map((a) => a.item.slot), ['avg', 'av', 'ar']);
 });
+
+test('le mode de prise de vue se lit par phase et ignore toute valeur inconnue', () => {
+  const { modePhotos } = require('../www/photos-tel.js');
+  assert.equal(modePhotos({}, 'entree'), '');
+  assert.equal(modePhotos({ photosMode: { entree: 'tel' } }, 'entree'), 'tel');
+  assert.equal(modePhotos({ photosMode: { entree: 'tablette' } }, 'sortie'), '');
+  assert.equal(modePhotos({ photosMode: { sortie: 'autre' } }, 'sortie'), '');
+});

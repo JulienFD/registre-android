@@ -1,6 +1,6 @@
 import { tabCompl } from './compl.js';
 import { CAM, PLAQUE, CHECK, COLS, DMG, PANELS, SLOTS, SORTIE_REQ, TYPES, VIEWS } from './constants.js';
-import { $, S, V, VV, esc, fmtD, fmtDT, isLocked, limTxt, entryErrors, plateHtml, plateKindOf, RULES, srcOf, todayISO } from './core.js';
+import { $, S, V, VV, esc, fmtD, fmtDT, fmtPlate, isLocked, limTxt, entryErrors, plateHtml, plateKindOf, RULES, srcOf, todayISO } from './core.js';
 import { nexptgHtml, nexptgMonter } from './nexptg-tab.js';
 import { entrySet, exitSet } from './photos.js';
 
@@ -69,6 +69,19 @@ function tile(phase, s, nextKey) {
     '<span class="lb">' + esc(s.l) + (busy && p ? ' · envoi…' : '') + '</span></button>';
 }
 function extraTiles(extras, phase) { return extras.length ? '<div class="tiles">' + extras.map(function (p) { return '<button class="tile has" data-act="view" data-phase="' + phase + '" data-pid="' + esc(p.id) + '"><img class="ph" loading="lazy" alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><span class="lb">' + esc(p.label || 'Détail') + '</span></button>' }).join('') + '</div>' : '' }
+/* Deux façons de faire les photos, au choix par phase : récupérer celles du téléphone, ou prendre la suivante avec la tablette. */
+function modeBar(phase, next, done) {
+  var mode = window.PhotosTel.modePhotos(VV(), phase);
+  var btn = function (m, texte, cls) { return '<button class="btn' + (cls ? ' ' + cls : '') + '" data-act="photosMode" data-phase="' + phase + '" data-mode="' + m + '">' + texte + '</button>' };
+  var compte = '<span class="sv" style="align-self:center">' + done + ' sur ' + SLOTS.length + (phase === 'sortie' ? ' · ' + SORTIE_REQ + ' minimum pour valider la sortie' : '') + '</span>';
+  if (!mode) return '<p class="hint">Comment faire les photos ?</p><div class="seg">' + btn('tel', 'Avec le téléphone', 'pri') + btn('tablette', 'Avec la tablette') + '</div>';
+  if (mode === 'tel') {
+    return '<ol class="hint nx-etapes"><li>Sur le téléphone, ouvrir la page photos et saisir la plaque <b>' + esc(fmtPlate(VV().plaque)) + '</b>.</li><li>Prendre les vues, puis les récupérer ici.</li></ol>' +
+      '<div class="seg"><button class="btn pri" data-act="telRecuperer">Récupérer les photos du téléphone</button>' + btn('tablette', 'Passer à la tablette') + compte + '</div>';
+  }
+  return '<div class="seg"><button class="btn pri shoot" data-act="next" data-phase="' + phase + '">' + CAM + (next ? 'Photo suivante : ' + esc(SLOTS.filter(function (s) { return s.k === next })[0].l) : 'Toutes les vues sont prises') + '</button>' +
+    btn('tel', 'Passer au téléphone') + compte + '</div>';
+}
 function photoGrid(phase) {
   var v = VV(), lk = isLocked(v, phase === 'entree' ? 'entry' : 'exit');
   var set = phase === 'entree' ? entrySet() : exitSet();
@@ -78,15 +91,13 @@ function photoGrid(phase) {
   var bar = '<div class="pbar" aria-hidden="true"><i style="width:' + Math.min(100, Math.round(done / SLOTS.length * 100)) + '%"></i></div>';
   var tiles = '<div class="tiles">' + SLOTS.map(function (s) { return tile(phase, s, next) }).join('') + '</div>';
   if (lk) return bar + '<div class="seg"><span class="sv">' + done + ' sur ' + SLOTS.length + ' · photos verrouillées. Les ajouts se font dans Compléments.</span></div>' + tiles + (extras.length ? '<div class="sec" style="background:var(--bg)"><h3>Photos de détail</h3>' + extraTiles(extras, phase) + '</div>' : '');
-  return bar +
-    '<div class="seg"><button class="btn pri shoot" data-act="next" data-phase="' + phase + '">' + CAM + (next ? 'Photo suivante : ' + esc(SLOTS.filter(function (s) { return s.k === next })[0].l) : 'Toutes les vues sont prises') + '</button>' +
-    '<span class="sv" style="align-self:center">' + done + ' sur ' + SLOTS.length + (phase === 'sortie' ? ' · ' + SORTIE_REQ + ' minimum pour valider la sortie' : '') + '</span></div>' + tiles +
+  return bar + modeBar(phase, next, done) + tiles +
     '<div class="sec" style="background:var(--bg)"><h3>Photos de détail</h3><p class="hint">Rayure, impact, numéro de série, tout ce qui mérite un gros plan. On peut en ajouter à tout moment.</p>' +
     '<div class="seg"><label class="fld" style="flex:1;min-width:200px"><span>Légende</span><input id="xl-' + phase + '" type="text" maxlength="60" placeholder="Ex. impact porte arrière gauche" autocomplete="off"></label>' +
     '<button class="btn" style="align-self:flex-end" data-act="extra" data-phase="' + phase + '">' + CAM + 'Prendre</button>' +
     '<button class="btn" style="align-self:flex-end" data-act="extragal" data-phase="' + phase + '">Importer</button></div>' + extraTiles(extras, phase) + '</div>';
 }
-function tabPhotos() { return '<div class="sec"><h3>Photos à l’arrivée</h3><p class="hint">Chaque photo est enregistrée dès la prise de vue, avec la plaque, la date et l’heure incrustées. Les douze vues sont obligatoires pour valider l’entrée.</p><div class="seg"><button class="btn" data-act="telRecuperer">Récupérer les photos du téléphone</button></div><div id="pg-entree" class="sec" style="border:0;padding:0">' + photoGrid('entree') + '</div></div>' }
+function tabPhotos() { return '<div class="sec"><h3>Photos à l’arrivée</h3><p class="hint">Chaque photo est enregistrée dès la prise de vue, avec la plaque, la date et l’heure incrustées. Les douze vues sont obligatoires pour valider l’entrée.</p><div id="pg-entree" class="sec" style="border:0;padding:0">' + photoGrid('entree') + '</div></div>' }
 
 function carView(k) {
   var vw = VIEWS[k], v = VV(), marks = (v.marks || []);
@@ -181,7 +192,7 @@ function tabSortie(v) {
     '<div class="sec"><h3>Remise du véhicule</h3><div class="remind"><b>Date et heure de sortie</b><span id="clk">' + esc(fmtDT(Date.now())) + '</span> : enregistrées automatiquement à la validation de la sortie.</div><div class="grid2">' + fld('remisPar', 'Qui a rendu le véhicule', { req: 1, list: 'people', ph: 'Nom de la personne de l’atelier' }) + fld('remisA', 'Nom de la personne qui vient le récupérer', { req: 1, ph: 'Nom et prénom' }) + '</div>' +
     area('notesSortie', 'Notes de sortie (réserves, remarques du client)', { rows: 3 }) +
     '<label class="tgl"><input type="checkbox" id="f-of" data-f="opsFaites"' + (v.opsFaites ? ' checked' : '') + '> Tout ce qui figure dans « À réaliser » a été fait ou signalé</label></div>' +
-    '<div class="sec"><h3>Photos à la sortie</h3><p class="hint">Même série que l’entrée, la photo d’entrée apparaît en vignette pour comparer.</p><div class="seg"><button class="btn" data-act="telRecuperer">Récupérer les photos du téléphone</button></div><div id="pg-sortie" class="sec" style="border:0;padding:0">' + photoGrid('sortie') + '</div></div>' +
+    '<div class="sec"><h3>Photos à la sortie</h3><p class="hint">Même série que l’entrée, la photo d’entrée apparaît en vignette pour comparer.</p><div id="pg-sortie" class="sec" style="border:0;padding:0">' + photoGrid('sortie') + '</div></div>' +
     sigBlock('sigSortie', 'Signature à la remise', v.remisA);
 }
 export function exitReady(v) {

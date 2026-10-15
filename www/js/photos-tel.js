@@ -19,6 +19,13 @@ function contexte(v, liste) {
   return T.plan({ photos: liste, dossierId: v.id, creeLe: v.createdAt || 0, sortieAt: v.sortieAt || 0, locales: S.photos, slots: SLOTS });
 }
 
+export function telMode(phase, mode) {
+  var v = VV(); if (!v || (mode !== 'tel' && mode !== 'tablette')) return;
+  var m = Object.assign({}, v.photosMode || {}); m[phase] = mode;
+  save({ photosMode: m });
+  renderSheet(true);
+}
+
 /* Importe d'un coup les vues du véhicule et les photos NexPTG ; les compléments se choisissent à part. */
 export async function telRecuperer() {
   var v = VV(); if (!v || !S.cur) return;

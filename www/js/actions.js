@@ -5,7 +5,7 @@ import { COLS } from './constants.js';
 import { $, S, TAMPON, VV, entryErrors, api, flush, hist, save, srcOf, toast } from './core.js';
 import { autoCreate, closeSheet, createDossier, lockConfirm, newEntry, openDossier, undoSig, validateEntry } from './dossier.js';
 import { installerMiseAJour, verifierMiseAJour } from './maj.js';
-import { telAjouter, telBasculer, telChoisir, telRecuperer } from './photos-tel.js';
+import { telAjouter, telBasculer, telChoisir, telMode, telRecuperer } from './photos-tel.js';
 import { nxChoisir, nxCommencer, nxMode, nxPoint, nxRecharger, nxTermine, nxTermineOk, nxVerifier } from './nexptg-tab.js';
 import { envoiAuto, envoiCopier, envoiMail, envoiOuvrir, envoiPartage, envoiPdf } from './envoi-pdf.js';
 import { makePdf } from './pdf.js';
@@ -92,6 +92,7 @@ export function act(a, b) {
   if (a === 'chooseArch') { chooseArchive(); return }
   if (a === 'chooseCopie') { chooseCopie(); return }
   if (a === 'removeCopie') { removeCopie(); return }
+  if (a === 'photosMode') { telMode(d.phase, d.mode); return }
   if (a === 'telRecuperer') { telRecuperer(); return }
   if (a === 'telChoisir') { telChoisir(); return }
   if (a === 'telBasculer') { telBasculer(b); return }
