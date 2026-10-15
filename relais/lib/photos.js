@@ -172,4 +172,4 @@ async function servir(o) {
   }
 }
 
-module.exports = { servirPhotos: avecCors(servir), dimensionsJpeg, SLOTS, TAILLE_MAX };
+module.exports = { servirPhotos: avecCors(servir), dimensionsJpeg, cheminReclamationPhoto: cheminReclamation, SLOTS, TAILLE_MAX };

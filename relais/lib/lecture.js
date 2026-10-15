@@ -111,4 +111,4 @@ async function rapports(o) {
   }
 }
 
-module.exports = { servirRapports: avecCors(rapports), servirTechniciens: avecCors(techniciens) };
+module.exports = { servirRapports: avecCors(rapports), servirTechniciens: avecCors(techniciens), cheminReclamationRapport: cheminReclamation };
