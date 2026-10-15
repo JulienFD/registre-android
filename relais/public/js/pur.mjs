@@ -10,6 +10,31 @@ export const SLOTS = [
 export const SORTIE_REQ = 8;
 const PHASES = { entree: 'ENTRÉE', sortie: 'SORTIE', mesures: 'MESURES', compl: 'COMPLÉMENT' };
 
+// Saisie de plaque : mêmes règles que le Registre (www/utils.js, un test vérifie la synchro).
+export const TYPES_PLAQUE = { fr: { ph: 'AB-123-CD', max: 9, nom: 'Française (AB-123-CD)' }, etr: { ph: 'B-AB 1234', max: 12, nom: 'Étrangère ou autre' } };
+const LETTRE_SIV = /[A-HJ-NP-TV-Z]/;
+const SIV = /^[A-HJ-NP-TV-Z]{2}\d{3}[A-HJ-NP-TV-Z]{2}$/;
+
+export function formatPlaque(brut, type) {
+  let s = String(brut || '').toUpperCase();
+  if (type === 'etr') {
+    s = s.replace(/[^\p{L}0-9 -]/gu, '').replace(/^[ -]+/, '').replace(/([ -])[ -]+/g, '$1');
+    return s.slice(0, 12);
+  }
+  let out = '';
+  s.replace(/[^A-Z0-9]/g, '').split('').forEach((c) => {
+    const n = out.length;
+    const lettre = n < 2 || n > 4;
+    if (n < 7 && (lettre ? LETTRE_SIV.test(c) : /\d/.test(c))) out += c;
+  });
+  return [out.slice(0, 2), out.slice(2, 5), out.slice(5)].filter(Boolean).join('-');
+}
+
+export function plaqueSaisieValide(p, type) {
+  const n = String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return type === 'etr' ? n.length >= 2 : SIV.test(n);
+}
+
 export function normPlaque(p) { return String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
 export function plaqueValide(p) { return /^[A-Z0-9]{2,15}$/.test(normPlaque(p)) && normPlaque(p) === p; }
 

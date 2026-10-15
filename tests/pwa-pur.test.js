@@ -82,3 +82,16 @@ test('expirationLocale convertit une durée du serveur en échéance de l\'horlo
   assert.equal(expirationLocale(1000, 'abc'), 1000);
   assert.equal(expirationLocale(1000, -5), 1000);
 });
+
+test('la saisie de plaque de la PWA se comporte comme celle du Registre', async () => {
+  const { formatPlaque, plaqueSaisieValide, TYPES_PLAQUE } = await charger();
+  const U = require('../www/utils.js');
+  const entrees = ['', 'a', 'ab', 'ab1', 'ab123', 'ab123c', 'ab123cd', 'ab-123-cd', 'AB123CDX', 'ia123cd', '12ab', 'ab 123 cd', 'b-ab 1234', 'ÉÀ-12  3--x', '   ab', 'x'.repeat(30)];
+  for (const kind of ['fr', 'etr']) {
+    for (const e of entrees) {
+      assert.equal(formatPlaque(e, kind), U.formatPlate(e, kind), kind + ' ' + JSON.stringify(e));
+      assert.equal(plaqueSaisieValide(e, kind), U.plateValid(e, kind), 'valide ' + kind + ' ' + JSON.stringify(e));
+    }
+  }
+  assert.deepEqual(Object.keys(TYPES_PLAQUE), ['fr', 'etr']);
+});

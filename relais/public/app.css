@@ -7,7 +7,7 @@ h2{font-size:15px;margin:18px 0 8px;color:var(--ink2);text-transform:uppercase;l
 .carte{max-width:520px;margin:0 auto;padding:18px 16px;display:flex;flex-direction:column;gap:10px}
 .ligne{display:flex;align-items:center;justify-content:space-between;gap:12px}
 label{display:flex;flex-direction:column;gap:6px;font-weight:600}
-input[type=text],input[type=password]{min-height:52px;padding:0 14px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);color:inherit;font:inherit}
+input[type=text],input[type=password],select{min-height:52px;padding:0 14px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);color:inherit;font:inherit}
 .btn{min-height:56px;padding:0 18px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:600 17px system-ui;cursor:pointer}
 .btn.sm{min-height:44px;padding:0 14px;font-size:15px}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}

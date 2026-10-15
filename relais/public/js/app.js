@@ -3,7 +3,7 @@ import { compteCourant, etat, lireSession, migrerAncienneConnexion, ouvrirSessio
 import { lister, vider } from './file.js';
 import { h, monter } from './dom.js';
 import { ouvrirPrise } from './prise.js';
-import { normPlaque, plaqueValide } from './pur.mjs';
+import { TYPES_PLAQUE, formatPlaque, normPlaque, plaqueSaisieValide, plaqueValide } from './pur.mjs';
 
 const racine = document.getElementById('app');
 let attente = { n: 0, rejetees: 0 };
@@ -36,13 +36,30 @@ function ecranConnexion(message) {
   monter(racine, form);
 }
 
+function typePlaque() {
+  try { return localStorage.getItem('type-plaque') === 'etr' ? 'etr' : 'fr'; } catch { return 'fr'; }
+}
+function memoriserTypePlaque(t) {
+  try { localStorage.setItem('type-plaque', t); } catch { /* confort seulement */ }
+}
+
 async function accueil() {
   await compterFile();
-  const plaque = h('input', { type: 'text', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false', placeholder: 'AB-123-CD', 'aria-label': 'Plaque d’immatriculation', maxlength: '12' });
+  let type = typePlaque();
+  const plaque = h('input', { type: 'text', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Plaque d’immatriculation' });
+  const choixType = h('select', { 'aria-label': 'Type de plaque' },
+    ...Object.keys(TYPES_PLAQUE).map((k) => h('option', { value: k, selected: k === type }, TYPES_PLAQUE[k].nom)));
+  const regler = () => { plaque.placeholder = TYPES_PLAQUE[type].ph; plaque.maxLength = TYPES_PLAQUE[type].max; };
+  regler();
+  plaque.addEventListener('input', () => { plaque.value = formatPlaque(plaque.value, type); });
+  choixType.addEventListener('change', () => {
+    type = choixType.value; memoriserTypePlaque(type);
+    plaque.value = formatPlaque(plaque.value, type); regler();
+  });
   const message = h('p', { class: 'erreur', role: 'alert' });
   const lancer = (phase) => async () => {
     const p = normPlaque(plaque.value);
-    if (!plaqueValide(p)) { message.textContent = 'Saisir une plaque valide.'; return; }
+    if (!plaqueSaisieValide(plaque.value, type) || !plaqueValide(p)) { message.textContent = 'Saisir une plaque valide.'; return; }
     message.textContent = '';
     const guide = phase === 'entree' || phase === 'sortie';
     let e = null;
@@ -58,6 +75,7 @@ async function accueil() {
   monter(racine, h('div', { class: 'carte' },
     h('div', { class: 'ligne' }, h('h1', {}, 'Photos du dossier'), h('button', { class: 'btn sm', onclick: async () => { await quitter(); ecranConnexion(); } }, 'Quitter')),
     h('p', { class: 'hint' }, 'Connecté : ' + compteCourant()),
+    h('label', {}, h('span', {}, 'Type de plaque'), choixType),
     h('label', {}, h('span', {}, 'Plaque du véhicule'), plaque),
     message,
     h('h2', {}, 'Photos du véhicule'),
