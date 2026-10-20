@@ -22,7 +22,6 @@ export function readiness(v) {
     { t: 'Informations', ok: !entryErrors(v).length, tab: 'infos' },
     { t: 'Photos ' + np + '/' + SLOTS.length, ok: np === SLOTS.length, tab: 'photos' },
     { t: 'Contrôle ' + nc + '/' + CHECK.length, ok: nc === CHECK.length, tab: 'dom' },
-    { t: 'NexPTG', ok: window.Nexptg.etatNexptg(v, S.nm[v.id] || []).ok, tab: 'mes' },
     { t: 'Signatures', ok: !!v.sigRecep && (!!v.sigClient || !!v.clientAbsent), tab: 'sign' }
   ];
 }
@@ -176,10 +175,6 @@ function sigBlock(field, title, defName) {
       '<div class="seg"><button class="btn" data-act="clearpad" data-f="' + field + '">Effacer</button><button class="btn pri" data-act="savesig" data-f="' + field + '">Enregistrer la signature</button></div>') + '</div>';
 }
 function tabSign0(v) {
-  /* Les mesures NexPTG précèdent la signature ; un dossier déjà signé reste consultable. */
-  if (!window.Nexptg.etatNexptg(v, S.nm[v.id] || []).ok && !v.sigRecep && !v.sigClient) {
-    return '<div class="banner">Les mesures NexPTG doivent être validées avant de signer.</div><div class="seg"><button class="btn pri" data-act="tab" data-v="mes">Aller à l’onglet NexPTG</button></div>';
-  }
   return '<div class="banner">Le réceptionnaire et le client signent après avoir relu les informations, les dommages relevés et le travail à réaliser.</div>' +
     sigBlock('sigRecep', 'Signature du réceptionnaire', v.recep) +
     '<label class="tgl sec"><input type="checkbox" id="f-ca" data-f="clientAbsent"' + (v.clientAbsent ? ' checked' : '') + '> Client absent à l’arrivée du véhicule (pas de signature client)</label>' +
