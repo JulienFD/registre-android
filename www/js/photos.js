@@ -1,7 +1,7 @@
 import { camOpen } from './camera.js';
 import { getCd } from './compl.js';
 import { SLOTS } from './constants.js';
-import { $, S, V, VV, api, fmtDT, fmtPlate, hist, isLocked, modifie, save, srcOf, toast } from './core.js';
+import { $, S, V, VV, api, fmtDT, fmtPlate, hist, isLocked, modifie, sanitize, save, srcOf, toast } from './core.js';
 import { askPin } from './pin.js';
 import { refreshPhotos } from './sheet.js';
 
@@ -105,6 +105,17 @@ export async function handlePdf() {
     save({ hist: hist(v, 'PDF NexDiag ajouté : ' + name) }); refreshPhotos(); toast('PDF ajouté au dossier');
   } catch (e) { toast('PDF non ajouté : ' + (e && e.message || 'erreur')) }
 }
+export async function renommerPhoto(pid, texte) {
+  var p = S.photos.filter(function (x) { return x.id === pid })[0];
+  if (!p || p.phase !== 'mesures') return;
+  var label = sanitize(texte, { max: 60 }).trim() || 'Mesure';
+  if (label === p.label) return;
+  p.label = label;
+  var rec = Object.assign({}, p); delete rec.id; delete rec.vid;
+  await api.write('vehicules/' + p.vid + '/photos/' + pid, rec);
+  modifie(p.vid);
+}
+
 export async function delPhoto(pid) {
   var v = VV(), p = S.photos.filter(function (x) { return x.id === pid })[0];
   if (!v || !p || p.phase === 'compl') return;

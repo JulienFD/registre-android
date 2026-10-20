@@ -6,8 +6,9 @@ import { $, S, T, VV, api, flush, fmtDT, cleanField, formatPlate, isLocked, pend
 import { PLAQUE } from './constants.js';
 import { autoCreate } from './dossier.js';
 import { verifierMiseAJour } from './maj.js';
+import { renommerPhoto } from './photos.js';
 import { newPin } from './pin.js';
-import { clearInvalid, refreshChrome, renderSheet, updateLightbox } from './sheet.js';
+import { clearInvalid, refreshChrome, refreshPhotos, renderSheet, updateLightbox } from './sheet.js';
 
 document.addEventListener('click', function (e) {
   var b = e.target.closest('[data-act]');
@@ -28,6 +29,10 @@ document.addEventListener('keydown', function (e) {
 /* Brouillon : créé dès qu'on quitte un champ, ou quand l'app passe en arrière-plan. */
 document.addEventListener('change', function (e) { if (S.draft && e.target && e.target.dataset && e.target.dataset.f) autoCreate() });
 document.addEventListener('change', function (e) { var t = e.target; if (t.dataset && t.dataset.filter) { S.f[t.dataset.filter] = t.value; renderMain() } });
+document.addEventListener('change', function (e) {
+  var t = e.target; if (!t.dataset || !t.dataset.pl) return;
+  renommerPhoto(t.dataset.pl, t.value).then(function () { var p = S.photos.filter(function (x) { return x.id === t.dataset.pl })[0]; if (p) t.value = p.label; if (!$('#lightbox').hidden) refreshPhotos() });
+});
 document.addEventListener('visibilitychange', function () { if (document.hidden) { autoCreate(); flush() } });
 document.addEventListener('input', function (e) {
   var t = e.target;

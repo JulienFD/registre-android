@@ -142,13 +142,16 @@ function mesPdf(pdfs) {
     (pdfs.length ? '<div class="vlist">' + pdfs.map(function (p) { return '<div class="arow"><span class="grow"><b>' + esc(p.label) + '</b><br><span class="sv">Ajouté le ' + esc(fmtDT(p.ts)) + (p.by ? ' par ' + esc(p.by) : '') + '</span></span><button class="btn sm" data-act="openpdf" data-pid="' + esc(p.id) + '">Ouvrir</button><button class="btn sm bad" data-act="delphoto" data-pid="' + esc(p.id) + '">Retirer</button></div>' }).join('') + '</div>' : '<p class="sv">Aucun PDF ajouté pour l’instant.</p>') +
     '<div class="seg"><button class="btn pri" data-act="addpdf">Ajouter le PDF du NexDiag</button></div>';
 }
+function labelInput(p) {
+  return '<input class="plabel" type="text" maxlength="60" aria-label="Légende" data-pl="' + esc(p.id) + '" value="' + esc(p.label || '') + '" autocomplete="off">';
+}
 function mesPhotos(ph) {
   return '<h3 style="font-size:18px">Photos de mesure</h3>' +
     '<div class="seg"><label class="fld" style="flex:1;min-width:200px"><span>Légende</span><input id="xl-mesures" type="text" maxlength="60" placeholder="Ex. capot, zone repeinte" autocomplete="off"></label>' +
     '<button class="btn" style="align-self:flex-end" data-act="extra" data-phase="mesures">' + CAM + 'Prendre</button>' +
     '<button class="btn" style="align-self:flex-end" data-act="extragal" data-phase="mesures">Importer</button>' +
     '<button class="btn" style="align-self:flex-end" data-act="telRecuperer">Photos du téléphone</button></div>' +
-    (ph.length ? '<div class="tiles">' + ph.map(function (p) { return '<button class="tile has" data-act="view" data-phase="mesures" data-pid="' + esc(p.id) + '"><img class="ph" loading="lazy" alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><span class="lb">' + esc(p.label || 'Mesure') + '</span></button>' }).join('') + '</div>' : '');
+    (ph.length ? '<div class="tiles">' + ph.map(function (p) { return '<div class="ptile"><button class="tile has" data-act="view" data-phase="mesures" data-pid="' + esc(p.id) + '"><img class="ph" loading="lazy" alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"></button>' + labelInput(p) + '</div>' }).join('') + '</div>' : '');
 }
 /* Le PDF NexDiag et les épaisseurs saisies n'existent qu'en mode manuel ; en automatique, le rapport du relais les remplace. */
 function mesBody(manuel) {
@@ -287,7 +290,7 @@ export function updateLightbox() {
   var lb = $('#lightbox'), p = findPhoto();
   if (!p) { lb.hidden = true; S.lb = null; return }
   var fixed = SLOTS.some(function (x) { return x.k === p.slot });
-  lb.innerHTML = '<img alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><div class="bar"><span>' + esc(p.label || '') + ' · ' + esc(fmtDT(p.ts)) + (p.by ? ' · ' + esc(p.by) : '') + '</span>' +
+  lb.innerHTML = '<img alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><div class="bar">' + (p.phase === 'mesures' ? labelInput(p) : '') + '<span>' + (p.phase === 'mesures' ? '' : esc(p.label || '') + ' · ') + esc(fmtDT(p.ts)) + (p.by ? ' · ' + esc(p.by) : '') + '</span>' +
     (fixed && (p.phase === 'entree' || p.phase === 'sortie') && S.cur && V(S.cur) && !isLocked(V(S.cur), p.phase === 'sortie' ? 'exit' : 'entry') ? '<button class="btn sm" data-act="retake" data-phase="' + esc(p.phase) + '" data-slot="' + esc(p.slot) + '" data-label="' + esc(p.label) + '">Reprendre</button>' : '') +
     (!fixed && p.phase !== 'compl' ? '<button class="btn sm bad" data-act="delphoto" data-pid="' + esc(p.id) + '">Supprimer</button>' : '') +
     '<button class="btn sm" data-act="lbclose">Fermer</button></div>';
