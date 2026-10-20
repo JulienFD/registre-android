@@ -1,5 +1,5 @@
 import { tabCompl } from './compl.js';
-import { CAM, PLAQUE, CHECK, COLS, DMG, PANELS, SLOTS, SORTIE_REQ, TYPES, VIEWS } from './constants.js';
+import { CAM, PLAQUE, COLS, FORMATIONS, PANELS, SLOTS, SORTIE_REQ, TYPES } from './constants.js';
 import { $, S, V, VV, esc, fmtD, fmtDT, fmtPlate, isLocked, limTxt, entryErrors, plateHtml, plateKindOf, RULES, srcOf, todayISO } from './core.js';
 import { nexptgHtml, nexptgMonter } from './nexptg-tab.js';
 import { entrySet, exitSet } from './photos.js';
@@ -13,16 +13,12 @@ function lockBar(v) {
   return '<div class="lockbar"><span class="grow"><b>Dossier verrouillé</b> depuis ' + (area === 'entry' ? 'la validation de l’entrée' : 'la sortie') + '. Pour ajouter une découverte (par exemple après le lavage), utiliser Compléments : rien n’est écrasé. Pour corriger une erreur, le code PIN propriétaire est demandé.</span><button class="btn pri" data-act="tab" data-v="compl">Ajouter un complément</button><button class="btn" data-act="unlock">Corriger (code PIN)</button></div>';
 }
 function tabInfos(v) { return lockWrap(tabInfos0(v), 'entry') }
-function tabDom(v) { return lockWrap(tabDom0(v), 'entry') }
 function tabSign(v) { return lockWrap(tabSign0(v), 'entry') }
 export function readiness(v) {
   var es = entrySet(), np = SLOTS.filter(function (s) { return es[s.k] }).length;
-  var nc = CHECK.filter(function (c) { return v.chk && v.chk[c.k] && v.chk[c.k].s }).length;
   return [
     { t: 'Informations', ok: !entryErrors(v).length, tab: 'infos' },
     { t: 'Photos ' + np + '/' + SLOTS.length, ok: np === SLOTS.length, tab: 'photos' },
-    { t: 'Contrôle ' + nc + '/' + CHECK.length, ok: nc === CHECK.length, tab: 'dom' },
-    { t: 'NexPTG', ok: window.Nexptg.etatNexptg(v, S.nm[v.id] || []).ok, tab: 'mes' },
     { t: 'Signatures', ok: !!v.sigRecep && (!!v.sigClient || !!v.clientAbsent), tab: 'sign' }
   ];
 }
@@ -45,17 +41,22 @@ function tabInfos0(v) {
     fld('cles', 'Clés remises (nombre)', { type: 'number', ph: 'Ex. 2' }) + '</div>' +
     area('objets', 'Objets personnels et accessoires laissés à bord', { rows: 2, ph: 'Aucun, ou liste précise' }) + '</div>' +
     '<div class="sec"><h3>Nature de l’intervention <em>*</em></h3><div class="types' + (isInvalid('type') ? ' invalid' : '') + '" id="f-type" tabindex="-1">' + Object.keys(TYPES).map(function (k) { return '<button class="type" style="--c:var(' + TYPES[k].c + ')" aria-pressed="' + (v.type === k) + '" data-act="type" data-v="' + k + '">' + TYPES[k].l + '</button>' }).join('') + '</div>' +
-    '<div class="grid2">' + fld('rattache', 'Rattaché à (session, stagiaire, parcours)', { ph: 'Ex. session polissage du 14 octobre' }) + fld('resp', 'Responsable de la voiture', { req: 1, list: 'people', ph: 'Ex. Jonathan' }) + '</div></div>' +
+    '<div class="grid2">' + formationSelect(v) + fld('debutFormation', 'Début de la formation', { type: 'date' }) + fld('resp', 'Responsable de la voiture', { req: 1, list: 'people', ph: 'Ex. Jonathan' }) + '</div></div>' +
     '<div class="sec"><h3>Ce qui doit être fait</h3>' +
     area('ops', 'Opérations à réaliser', { req: 1, rows: 5, ph: 'Ex. décontamination, polissage 2 étapes capot et ailes, lavage intérieur' }) +
-    area('dit', 'Ce qui a été dit au client (engagements, délais, limites)', { rows: 4, ph: 'Ex. la rayure du pare-chocs ne sera pas reprise, voiture rendue vendredi 17 h' }) +
+    area('dit', 'Ce qui a été dit au client et ce qu’il ne faut pas faire', { rows: 5, ph: 'Ex. la rayure du pare-chocs ne sera pas reprise, voiture rendue vendredi 17 h. Ne pas toucher aux jantes' }) +
     '<div class="grid2">' + fld('dateLimite', 'Engagement : date maximum promise', { type: 'date', req: 1 }) + fld('engageValide', 'Engagement validé par', { req: 1, list: 'people', ph: 'Qui a donné cet accord' }) + '</div>' +
     '<div class="seg"><button class="btn sm" data-act="tampon">Voiture tampon : 01/01/2100</button><span class="sv" style="align-self:center">Voiture tampon, sans délai promis : noter 01/01/2100.</span></div>' +
-    area('exclu', 'À ne pas faire', { rows: 2, ph: 'Ex. ne pas toucher aux jantes' }) + '</div>' +
+    '</div>' +
     '<div class="sec"><h3>Dates et personnes</h3><div class="grid2">' +
     fld('sortiePrevue', 'Date de sortie prévue', { type: 'date', req: 1, min: todayISO() }) + fld('recep', 'Réceptionné par', { req: 1, list: 'people', ph: 'Jonathan, Hervé…' }) +
     fld('clientNom', 'Client ou propriétaire', { ph: 'Ex. Dupont' }) + fld('clientTel', 'Téléphone du client', { type: 'tel' }) + fld('clientMail', 'E-mail du client', { type: 'email' }) + '</div>' +
     '<label class="tgl"><input type="checkbox" id="f-copie" data-f="copie"' + (v.copie ? ' checked' : '') + '> Le client reçoit une copie du PDF</label></div>';
+}
+
+function formationSelect(v) {
+  var cur = v.rattache || '', opts = FORMATIONS.indexOf(cur) < 0 && cur ? [cur].concat(FORMATIONS) : FORMATIONS;
+  return '<label class="fld"><span>Formation concernée</span><select id="f-rattache" data-f="rattache"><option value="">Aucune</option>' + opts.map(function (o) { return '<option value="' + esc(o) + '"' + (cur === o ? ' selected' : '') + '>' + esc(o) + '</option>' }).join('') + '</select></label>';
 }
 
 function tile(phase, s, nextKey) {
@@ -99,44 +100,13 @@ function photoGrid(phase) {
 }
 function tabPhotos() { return '<div class="sec"><h3>Photos à l’arrivée</h3><p class="hint">Chaque photo est enregistrée dès la prise de vue, avec la plaque, la date et l’heure incrustées. Les douze vues sont obligatoires pour valider l’entrée.</p><div id="pg-entree" class="sec" style="border:0;padding:0">' + photoGrid('entree') + '</div></div>' }
 
-function carView(k) {
-  var vw = VIEWS[k], v = VV(), marks = (v.marks || []);
-  var sh = vw.sh.map(function (s) {
-    var cls = 's' + s[0];
-    return s[1] === 'r' ? '<rect class="' + cls + '" x="' + s[2] + '" y="' + s[3] + '" width="' + s[4] + '" height="' + s[5] + '" rx="' + s[6] + '"/>' : '<circle class="' + cls + '" cx="' + s[2] + '" cy="' + s[3] + '" r="' + s[4] + '"/>'
-  }).join('');
-  var lab = k === 'top' ? '<text class="o" x="100" y="26" text-anchor="middle">AVANT</text><text class="o" x="100" y="396" text-anchor="middle">ARRIÈRE</text>' :
-    '<text class="o" x="' + (k === 'left' ? 16 : 384) + '" y="160" text-anchor="' + (k === 'left' ? 'start' : 'end') + '">AVANT</text>';
-  var mk = marks.map(function (m, i) {
-    if (m.v !== k) return ''; var col = (DMG.filter(function (d) { return d[0] === m.t })[0] || DMG[5])[2];
-    return '<g class="mk"><circle cx="' + (m.x / 100 * vw.w) + '" cy="' + (m.y / 100 * vw.h) + '" r="' + (k === 'top' ? 11 : 12) + '" fill="' + col + '"/><text x="' + (m.x / 100 * vw.w) + '" y="' + (m.y / 100 * vw.h) + '">' + (i + 1) + '</text></g>'
-  }).join('');
-  return '<div class="cv' + (k === 'top' ? ' top-v' : '') + '"><h4>' + vw.lab + '</h4><svg viewBox="0 0 ' + vw.w + ' ' + vw.h + '" data-view="' + k + '" role="img" aria-label="Schéma ' + vw.lab + ', toucher pour marquer un défaut">' + sh + lab + mk + '</svg></div>';
-}
-function tabDom0(v) {
-  var marks = v.marks || [];
-  var rows = marks.map(function (m, i) {
-    return '<div class="mrow"><span class="mnum" style="background:' + (DMG.filter(function (d) { return d[0] === m.t })[0] || DMG[5])[2] + '">' + (i + 1) + '</span>' +
-      '<select class="mt" data-mk="' + i + '" data-mf="t" aria-label="Type de défaut" style="min-height:44px;border-radius:6px;border:1.5px solid var(--line);background:var(--bg);padding:0 8px">' + DMG.map(function (d) { return '<option value="' + d[0] + '"' + (m.t === d[0] ? ' selected' : '') + '>' + d[1] + '</option>' }).join('') + '</select>' +
-      '<input type="text" data-mk="' + i + '" data-mf="n" maxlength="80" value="' + esc(m.n || '') + '" placeholder="Précision (taille, position)" aria-label="Précision du défaut ' + (i + 1) + '">' +
-      '<button class="btn sm bad" data-act="delmk" data-i="' + i + '" aria-label="Supprimer le défaut ' + (i + 1) + '">Supprimer</button></div>'
-  }).join('');
-  var ch = CHECK.map(function (c) {
-    var s = (v.chk && v.chk[c.k]) || {};
-    return '<div class="crow"><span>' + esc(c.l) + '</span><div class="sgm">' + [['ras', 'RAS'], ['def', 'Défaut'], ['na', 'N/A']].map(function (o) { return '<button class="' + o[0] + '" aria-pressed="' + (s.s === o[0]) + '" data-act="chk" data-k="' + c.k + '" data-s="' + o[0] + '">' + o[1] + '</button>' }).join('') + '</div>' +
-      (s.s === 'def' ? '<div class="nt"><input type="text" data-ck="' + c.k + '" maxlength="200" value="' + esc(s.n || '') + '" placeholder="Décrire le défaut constaté" aria-label="Défaut : ' + esc(c.l) + '"></div>' : '') + '</div>'
-  }).join('');
-  return '<div class="sec"><h3>Schéma des dommages</h3><p class="hint">Choisir le type de défaut, puis toucher le schéma à l’endroit exact.</p>' +
-    '<div class="dmg">' + DMG.map(function (d) { return '<button class="btn sm' + (S.dmg === d[0] ? ' on' : '') + '" data-act="dmg" data-v="' + d[0] + '"><span style="width:12px;height:12px;border-radius:50%;background:' + d[2] + ';display:inline-block"></span>' + d[1] + '</button>' }).join('') + '</div>' +
-    '<div class="carviews">' + carView('top') + carView('left') + carView('right') + '</div>' +
-    (marks.length ? '<div class="vlist">' + rows + '</div>' : '<p class="hint">Aucun dommage marqué. Si le véhicule est sans défaut, laisser vide et cocher RAS partout ci-dessous.</p>') + '</div>' +
-    '<div class="sec"><h3>Contrôle point par point</h3><div>' + ch + '</div></div>';
-}
-
 function mesPdf(pdfs) {
   return '<h3 style="font-size:18px">PDF du NexDiag</h3><p class="hint">Dans le mail envoyé par le NexDiag, enregistrer la pièce jointe sur le PC, puis la choisir ici. Ses pages sont ajoutées au PDF final du véhicule.</p>' +
     (pdfs.length ? '<div class="vlist">' + pdfs.map(function (p) { return '<div class="arow"><span class="grow"><b>' + esc(p.label) + '</b><br><span class="sv">Ajouté le ' + esc(fmtDT(p.ts)) + (p.by ? ' par ' + esc(p.by) : '') + '</span></span><button class="btn sm" data-act="openpdf" data-pid="' + esc(p.id) + '">Ouvrir</button><button class="btn sm bad" data-act="delphoto" data-pid="' + esc(p.id) + '">Retirer</button></div>' }).join('') + '</div>' : '<p class="sv">Aucun PDF ajouté pour l’instant.</p>') +
     '<div class="seg"><button class="btn pri" data-act="addpdf">Ajouter le PDF du NexDiag</button></div>';
+}
+function labelInput(p) {
+  return '<input class="plabel" type="text" maxlength="60" aria-label="Légende" data-pl="' + esc(p.id) + '" value="' + esc(p.label || '') + '" autocomplete="off">';
 }
 function mesPhotos(ph) {
   return '<h3 style="font-size:18px">Photos de mesure</h3>' +
@@ -144,7 +114,7 @@ function mesPhotos(ph) {
     '<button class="btn" style="align-self:flex-end" data-act="extra" data-phase="mesures">' + CAM + 'Prendre</button>' +
     '<button class="btn" style="align-self:flex-end" data-act="extragal" data-phase="mesures">Importer</button>' +
     '<button class="btn" style="align-self:flex-end" data-act="telRecuperer">Photos du téléphone</button></div>' +
-    (ph.length ? '<div class="tiles">' + ph.map(function (p) { return '<button class="tile has" data-act="view" data-phase="mesures" data-pid="' + esc(p.id) + '"><img class="ph" loading="lazy" alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><span class="lb">' + esc(p.label || 'Mesure') + '</span></button>' }).join('') + '</div>' : '');
+    (ph.length ? '<div class="tiles">' + ph.map(function (p) { return '<div class="ptile"><button class="tile has" data-act="view" data-phase="mesures" data-pid="' + esc(p.id) + '"><img class="ph" loading="lazy" alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"></button>' + labelInput(p) + '</div>' }).join('') + '</div>' : '');
 }
 /* Le PDF NexDiag et les épaisseurs saisies n'existent qu'en mode manuel ; en automatique, le rapport du relais les remplace. */
 function mesBody(manuel) {
@@ -171,10 +141,6 @@ function sigBlock(field, title, defName) {
       '<div class="seg"><button class="btn" data-act="clearpad" data-f="' + field + '">Effacer</button><button class="btn pri" data-act="savesig" data-f="' + field + '">Enregistrer la signature</button></div>') + '</div>';
 }
 function tabSign0(v) {
-  /* Les mesures NexPTG précèdent la signature ; un dossier déjà signé reste consultable. */
-  if (!window.Nexptg.etatNexptg(v, S.nm[v.id] || []).ok && !v.sigRecep && !v.sigClient) {
-    return '<div class="banner">Les mesures NexPTG doivent être validées avant de signer.</div><div class="seg"><button class="btn pri" data-act="tab" data-v="mes">Aller à l’onglet NexPTG</button></div>';
-  }
   return '<div class="banner">Le réceptionnaire et le client signent après avoir relu les informations, les dommages relevés et le travail à réaliser.</div>' +
     sigBlock('sigRecep', 'Signature du réceptionnaire', v.recep) +
     '<label class="tgl sec"><input type="checkbox" id="f-ca" data-f="clientAbsent"' + (v.clientAbsent ? ' checked' : '') + '> Client absent à l’arrivée du véhicule (pas de signature client)</label>' +
@@ -206,7 +172,7 @@ function sheetHead(v) {
   if (S.cur && v.statut && v.statut !== 'brouillon' && v.statut !== 'sorti') {
     seg = '<div class="seg">' + COLS.slice(1).map(function (c) { return '<button class="btn sm' + (v.statut === c[0] ? ' on' : '') + '" data-act="status" data-v="' + c[0] + '">' + c[1] + '</button>' }).join('') + '</div>';
   }
-  var nc = S.cur ? (S.cm[S.cur] || []).length : 0; var tabs = [['infos', 'Informations'], ['photos', 'Photos'], ['dom', 'Dommages et contrôle'], ['mes', 'NexPTG'], ['sign', 'Signatures'], ['compl', 'Compléments' + (nc ? ' (' + nc + ')' : '')], ['sortie', 'Sortie']];
+  var nc = S.cur ? (S.cm[S.cur] || []).length : 0; var tabs = [['infos', 'Informations'], ['photos', 'Photos'], ['mes', 'NexPTG'], ['sign', 'Signatures'], ['compl', 'Compléments' + (nc ? ' (' + nc + ')' : '')], ['sortie', 'Sortie']];
   if (!S.cur) tabs = [['infos', 'Informations']];
   return '<div class="sh"><div class="shin"><div class="shrow"><button class="btn" data-act="close">← Tableau</button>' +
     '<div class="ttl">' + plateHtml(v.plaque || '') + '<div>' + esc([v.marque, v.modele].filter(Boolean).join(' ') || 'Nouvelle entrée') + (t ? ' · ' + esc(t.l) : '') + '</div></div>' + seg +
@@ -226,7 +192,7 @@ function gate(v) {
   }
   return '';
 }
-function tabHtml(v) { return S.tab === 'compl' ? tabCompl(v) : S.tab === 'photos' ? tabPhotos(v) : S.tab === 'dom' ? tabDom(v) : S.tab === 'mes' ? tabMes(v) : S.tab === 'sign' ? tabSign(v) : S.tab === 'sortie' ? tabSortie(v) : tabInfos(v) }
+function tabHtml(v) { return S.tab === 'compl' ? tabCompl(v) : S.tab === 'photos' ? tabPhotos(v) : S.tab === 'mes' ? tabMes(v) : S.tab === 'sign' ? tabSign(v) : S.tab === 'sortie' ? tabSortie(v) : tabInfos(v) }
 export function renderSheet(keepScroll) {
   var sh = $('#sheet'), v = VV(); if (!v) { sh.hidden = true; return }
   var y = keepScroll ? sh.scrollTop : 0;
@@ -287,7 +253,7 @@ export function updateLightbox() {
   var lb = $('#lightbox'), p = findPhoto();
   if (!p) { lb.hidden = true; S.lb = null; return }
   var fixed = SLOTS.some(function (x) { return x.k === p.slot });
-  lb.innerHTML = '<img alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><div class="bar"><span>' + esc(p.label || '') + ' · ' + esc(fmtDT(p.ts)) + (p.by ? ' · ' + esc(p.by) : '') + '</span>' +
+  lb.innerHTML = '<img alt="' + esc(p.label) + '" src="' + esc(srcOf(p)) + '"><div class="bar">' + (p.phase === 'mesures' ? labelInput(p) : '') + '<span>' + (p.phase === 'mesures' ? '' : esc(p.label || '') + ' · ') + esc(fmtDT(p.ts)) + (p.by ? ' · ' + esc(p.by) : '') + '</span>' +
     (fixed && (p.phase === 'entree' || p.phase === 'sortie') && S.cur && V(S.cur) && !isLocked(V(S.cur), p.phase === 'sortie' ? 'exit' : 'entry') ? '<button class="btn sm" data-act="retake" data-phase="' + esc(p.phase) + '" data-slot="' + esc(p.slot) + '" data-label="' + esc(p.label) + '">Reprendre</button>' : '') +
     (!fixed && p.phase !== 'compl' ? '<button class="btn sm bad" data-act="delphoto" data-pid="' + esc(p.id) + '">Supprimer</button>' : '') +
     '<button class="btn sm" data-act="lbclose">Fermer</button></div>';

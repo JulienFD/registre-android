@@ -157,7 +157,7 @@ export async function nxChoisir(sha) {
 
 export function nxTermine() {
   modalShow('<h2>Terminé sans rapport NexPTG</h2>' +
-    '<p class="hint">Les mesures NexPTG sont obligatoires avant la signature. Indiquer pourquoi le dossier continue sans rapport : le motif est inscrit dans l’historique du dossier.</p>' +
+    '<p class="hint">Indiquer pourquoi le dossier se passe de rapport NexPTG : le motif est inscrit dans l’historique du dossier.</p>' +
     '<label class="fld"><span>Motif <em>*</em></span><textarea id="nx-motif" rows="3" maxlength="300" autocomplete="off"></textarea></label>' +
     '<div class="mrow2"><button class="btn" data-act="closemodal">Annuler</button><button class="btn pri" data-act="nxTermineOk">Confirmer</button></div>');
 }

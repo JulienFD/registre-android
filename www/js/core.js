@@ -1,9 +1,9 @@
-import { CHECK, FL } from './constants.js';
+import { FL } from './constants.js';
 
 export var $ = function (s, r) { return (r || document).querySelector(s) };
 export var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] }) };
 export var api = window.api;
-export var S = { list: [], view: 'board', q: '', f: { type: '', resp: '', retard: false }, cur: null, draft: null, tab: 'infos', photos: [], pm: {}, cm: {}, nm: {}, busy: {}, dmg: 'rayure', lb: null, loaded: false, dberr: '', unlocked: null, snap: null, unlockTs: 0, cdraft: null, invalid: [] };
+export var S = { list: [], view: 'board', q: '', f: { type: '', resp: '', retard: false }, cur: null, draft: null, tab: 'infos', photos: [], pm: {}, cm: {}, nm: {}, busy: {}, lb: null, loaded: false, dberr: '', unlocked: null, snap: null, unlockTs: 0, cdraft: null, invalid: [] };
 export var queues = {};
 export var pend = {};
 export var T = { tmr: null };
@@ -51,9 +51,6 @@ function shorten(x) { x = x == null ? '' : String(x); return x.length > 40 ? x.s
 function diffText(a, b) {
   var out = [];
   Object.keys(FL).forEach(function (k) { var x = a[k] == null ? '' : a[k], y = b[k] == null ? '' : b[k]; if (String(x) !== String(y)) out.push(FL[k] + ' : « ' + shorten(x) + ' » → « ' + shorten(y) + ' »') });
-  var ca = a.chk || {}, cb = b.chk || {};
-  CHECK.forEach(function (c) { var x = ca[c.k] || {}, y = cb[c.k] || {}; if ((x.s || '') !== (y.s || '') || (x.n || '') !== (y.n || '')) out.push('Contrôle « ' + c.l.split(':')[0] + ' » : ' + (x.s || 'vide') + ' → ' + (y.s || 'vide') + (y.n ? ' (' + shorten(y.n) + ')' : '')) });
-  if (JSON.stringify(a.marks || []) !== JSON.stringify(b.marks || [])) out.push('Schéma des dommages modifié (' + (a.marks || []).length + ' → ' + (b.marks || []).length + ' marques)');
   ['sigRecep', 'sigClient', 'sigSortie'].forEach(function (k) { if (JSON.stringify(a[k] || null) !== JSON.stringify(b[k] || null)) out.push('Signature modifiée (' + k + ')') });
   if (JSON.stringify(a.mes || {}) !== JSON.stringify(b.mes || {})) out.push('Épaisseurs modifiées');
   return out.join(' ; ');

@@ -127,8 +127,8 @@
   var RULES = {
     marque: { max: 30 }, modele: { max: 40 }, couleur: { max: 30 },
     km: { digits: true, max: 7 }, cles: { digits: true, max: 2 }, objets: { max: 500 },
-    rattache: { max: 100 }, resp: { max: 40 }, recep: { max: 40 }, engageValide: { max: 40 },
-    ops: { max: 1000 }, dit: { max: 1000 }, exclu: { max: 500 },
+    rattache: { max: 120 }, resp: { max: 40 }, recep: { max: 40 }, engageValide: { max: 40 },
+    ops: { max: 1000 }, dit: { max: 1500 }, exclu: { max: 500 },
     clientNom: { max: 60 }, clientTel: { chars: /[^0-9+().\- ]/g, max: 20 }, clientMail: { noSpace: true, max: 100 },
     mesNotes: { max: 1000 }, notesSortie: { max: 1000 }, remisPar: { max: 40 }, remisA: { max: 40 }
   };

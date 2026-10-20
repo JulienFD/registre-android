@@ -108,7 +108,7 @@
     return !!t && typeof t === 'object' && typeof t.motif === 'string' && t.motif.trim().length >= MOTIF_MIN;
   }
 
-  // Statut : attente, mesures (en cours), recu, termine. `ok` = la section NexPTG est satisfaite (déblocage de la signature).
+  // Statut : attente, mesures (en cours), recu, termine. `ok` = la section NexPTG est satisfaite.
   function etatNexptg(dossier, versions) {
     var nx = (dossier && dossier.nexptg) || {};
     var derniere = derniereVersion(versions);

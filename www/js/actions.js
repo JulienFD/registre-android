@@ -49,12 +49,6 @@ export function act(a, b) {
   }
   if (a === 'lbclose') { S.lb = null; $('#lightbox').hidden = true; return }
   if (a === 'delphoto') { delPhoto(d.pid); return }
-  if (a === 'dmg') { S.dmg = d.v; renderSheet(true); return }
-  if (a === 'delmk') { var v4 = VV(), m = (v4.marks || []).slice(); m.splice(+d.i, 1); save({ marks: m }); renderSheet(true); return }
-  if (a === 'chk') {
-    var v5 = VV(), cur = (v5.chk && v5.chk[d.k]) || {}, nv = { s: d.s, n: d.s === 'def' ? (cur.n || '') : '' };
-    v5.chk = Object.assign({}, v5.chk || {}); v5.chk[d.k] = nv; var w = { chk: {} }; w.chk[d.k] = nv; save({}, w); renderSheet(true); return
-  }
   if (a === 'clearpad') { var cv = $('canvas.pad[data-pad="' + d.f + '"]'); if (cv) { var c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height); cv.dataset.dirty = '' } return }
   if (a === 'resig') { var o = {}; o[d.f] = null; save(o); renderSheet(true); return }
   if (a === 'savesig') {
