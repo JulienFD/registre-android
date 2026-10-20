@@ -57,7 +57,7 @@
 #lightbox{position:fixed;inset:0;z-index:40;background:rgba(5,10,12,.92);display:flex;flex-direction:column;padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px))}
 #lightbox img{flex:1;min-height:0;width:100%;object-fit:contain;touch-action:none;user-select:none;-webkit-user-drag:none}
 #lightbox{overflow:hidden}
-#lightbox .plabel{flex:1 1 260px;max-width:420px}
+#lightbox .plabel{flex:1 1 260px;max-width:420px;background:var(--bg);color:var(--ink)}
 .ptile{display:flex;flex-direction:column;gap:4px}
 .ptile .tile{width:100%}
 .plabel{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;min-width:0}
