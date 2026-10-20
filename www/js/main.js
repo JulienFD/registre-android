@@ -8,6 +8,7 @@ import { autoCreate } from './dossier.js';
 import { verifierMiseAJour } from './maj.js';
 import { renommerPhoto } from './photos.js';
 import { newPin } from './pin.js';
+import { initZoomPhoto } from './zoom-photo.js';
 import { clearInvalid, refreshChrome, refreshPhotos, renderSheet, updateLightbox } from './sheet.js';
 
 document.addEventListener('click', function (e) {
@@ -60,6 +61,7 @@ document.addEventListener('input', function (e) {
 
 /* ---------- démarrage ---------- */
 initCopie();
+initZoomPhoto();
 renderMain();
 (async function () {
   try {
