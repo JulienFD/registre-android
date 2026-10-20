@@ -1,5 +1,5 @@
 import { tabCompl } from './compl.js';
-import { CAM, PLAQUE, CHECK, COLS, DMG, PANELS, SLOTS, SORTIE_REQ, TYPES, VIEWS } from './constants.js';
+import { CAM, PLAQUE, CHECK, COLS, DMG, FORMATIONS, PANELS, SLOTS, SORTIE_REQ, TYPES, VIEWS } from './constants.js';
 import { $, S, V, VV, esc, fmtD, fmtDT, fmtPlate, isLocked, limTxt, entryErrors, plateHtml, plateKindOf, RULES, srcOf, todayISO } from './core.js';
 import { nexptgHtml, nexptgMonter } from './nexptg-tab.js';
 import { entrySet, exitSet } from './photos.js';
@@ -45,17 +45,22 @@ function tabInfos0(v) {
     fld('cles', 'Clés remises (nombre)', { type: 'number', ph: 'Ex. 2' }) + '</div>' +
     area('objets', 'Objets personnels et accessoires laissés à bord', { rows: 2, ph: 'Aucun, ou liste précise' }) + '</div>' +
     '<div class="sec"><h3>Nature de l’intervention <em>*</em></h3><div class="types' + (isInvalid('type') ? ' invalid' : '') + '" id="f-type" tabindex="-1">' + Object.keys(TYPES).map(function (k) { return '<button class="type" style="--c:var(' + TYPES[k].c + ')" aria-pressed="' + (v.type === k) + '" data-act="type" data-v="' + k + '">' + TYPES[k].l + '</button>' }).join('') + '</div>' +
-    '<div class="grid2">' + fld('rattache', 'Rattaché à (session, stagiaire, parcours)', { ph: 'Ex. session polissage du 14 octobre' }) + fld('resp', 'Responsable de la voiture', { req: 1, list: 'people', ph: 'Ex. Jonathan' }) + '</div></div>' +
+    '<div class="grid2">' + formationSelect(v) + fld('debutFormation', 'Début de la formation', { type: 'date' }) + fld('resp', 'Responsable de la voiture', { req: 1, list: 'people', ph: 'Ex. Jonathan' }) + '</div></div>' +
     '<div class="sec"><h3>Ce qui doit être fait</h3>' +
     area('ops', 'Opérations à réaliser', { req: 1, rows: 5, ph: 'Ex. décontamination, polissage 2 étapes capot et ailes, lavage intérieur' }) +
-    area('dit', 'Ce qui a été dit au client (engagements, délais, limites)', { rows: 4, ph: 'Ex. la rayure du pare-chocs ne sera pas reprise, voiture rendue vendredi 17 h' }) +
+    area('dit', 'Ce qui a été dit au client et ce qu’il ne faut pas faire', { rows: 5, ph: 'Ex. la rayure du pare-chocs ne sera pas reprise, voiture rendue vendredi 17 h. Ne pas toucher aux jantes' }) +
     '<div class="grid2">' + fld('dateLimite', 'Engagement : date maximum promise', { type: 'date', req: 1 }) + fld('engageValide', 'Engagement validé par', { req: 1, list: 'people', ph: 'Qui a donné cet accord' }) + '</div>' +
     '<div class="seg"><button class="btn sm" data-act="tampon">Voiture tampon : 01/01/2100</button><span class="sv" style="align-self:center">Voiture tampon, sans délai promis : noter 01/01/2100.</span></div>' +
-    area('exclu', 'À ne pas faire', { rows: 2, ph: 'Ex. ne pas toucher aux jantes' }) + '</div>' +
+    '</div>' +
     '<div class="sec"><h3>Dates et personnes</h3><div class="grid2">' +
     fld('sortiePrevue', 'Date de sortie prévue', { type: 'date', req: 1, min: todayISO() }) + fld('recep', 'Réceptionné par', { req: 1, list: 'people', ph: 'Jonathan, Hervé…' }) +
     fld('clientNom', 'Client ou propriétaire', { ph: 'Ex. Dupont' }) + fld('clientTel', 'Téléphone du client', { type: 'tel' }) + fld('clientMail', 'E-mail du client', { type: 'email' }) + '</div>' +
     '<label class="tgl"><input type="checkbox" id="f-copie" data-f="copie"' + (v.copie ? ' checked' : '') + '> Le client reçoit une copie du PDF</label></div>';
+}
+
+function formationSelect(v) {
+  var cur = v.rattache || '', opts = FORMATIONS.indexOf(cur) < 0 && cur ? [cur].concat(FORMATIONS) : FORMATIONS;
+  return '<label class="fld"><span>Formation concernée</span><select id="f-rattache" data-f="rattache"><option value="">Aucune</option>' + opts.map(function (o) { return '<option value="' + esc(o) + '"' + (cur === o ? ' selected' : '') + '>' + esc(o) + '</option>' }).join('') + '</select></label>';
 }
 
 function tile(phase, s, nextKey) {

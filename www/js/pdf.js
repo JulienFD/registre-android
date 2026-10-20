@@ -81,7 +81,8 @@ export async function buildPdf(v, photos, mode, cid) {
   kv('Marque / modèle', [v.marque, v.modele].filter(Boolean).join(' '), M, cw - 3); kv('Couleur', v.couleur, M + cw, cw - 3); kv('Kilométrage', v.km ? v.km + ' km' : '', M + 2 * cw, cw - 3); y += 12;
   if (mode === 'compl') { await complements(cl.filter(function (c) { return c.id === cid })); return finish() }
   kv('Carburant', v.fuel, M, cw - 3); kv('Clés remises', v.cles, M + cw, cw - 3); kv('Sortie prévue', v.sortiePrevue ? fmtD(v.sortiePrevue) : '', M + 2 * cw, cw - 3); y += 12;
-  kv('Réceptionné par', v.recep, M, cw - 3); kv('Responsable du véhicule', v.resp, M + cw, cw - 3); kv('Rattaché à', v.rattache, M + 2 * cw, cw - 3); y += 12;
+  kv('Réceptionné par', v.recep, M, cw - 3); kv('Responsable du véhicule', v.resp, M + cw, cw - 3); kv('Formation', v.rattache, M + 2 * cw, cw - 3); y += 12;
+  kv('Début de la formation', v.debutFormation ? fmtD(v.debutFormation) : '', M, cw - 3); y += 12;
   kv('Client', v.clientNom, M, cw - 3); kv('Téléphone', v.clientTel, M + cw, cw - 3); kv('E-mail', v.clientMail, M + 2 * cw, cw - 3); y += 12;
   para('Ce qui doit être fait', v.ops); para('Ce qui a été dit au client', v.dit);
   if (v.dateLimite) { ens(16); h2('Engagement client'); y += txt('Date maximum promise : ' + limTxt(v) + '.   Engagement validé par : ' + (v.engageValide || 'non renseigné'), M, y, { s: 10, b: 1, w: W - 2 * M }) + 5 }
