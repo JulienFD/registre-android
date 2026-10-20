@@ -1,4 +1,4 @@
-import { CHECK, DMG, PANELS, TYPES, VIEWS, WORKER, ckLabel } from './constants.js';
+import { PANELS, TYPES, WORKER, ckLabel } from './constants.js';
 import { S, VV, api, flush, fmtD, fmtDT, fmtPlate, hist, limTxt, nomPdf, save, srcOf, toast } from './core.js';
 import { renderSheet } from './sheet.js';
 
@@ -11,30 +11,11 @@ async function pdfImg(p) {
     c.getContext('2d').drawImage(i, 0, 0, c.width, c.height); return { d: c.toDataURL('image/jpeg', .72), w: c.width, h: c.height }
   } catch (e) { return null }
 }
-function pdfCar(doc, k, ox, oy, sc, marks) {
-  var vw = VIEWS[k];
-  vw.sh.forEach(function (s) {
-    if (s[0] === 'b') { doc.setFillColor(221, 228, 225); doc.setDrawColor(74, 93, 99) } else if (s[0] === 'g') { doc.setFillColor(255, 255, 255); doc.setDrawColor(74, 93, 99) } else { doc.setFillColor(60, 70, 74); doc.setDrawColor(30, 35, 38) }
-    doc.setLineWidth(.3);
-    if (s[1] === 'r') doc.roundedRect(ox + s[2] * sc, oy + s[3] * sc, s[4] * sc, s[5] * sc, s[6] * sc, s[6] * sc, 'FD'); else doc.circle(ox + s[2] * sc, oy + s[3] * sc, s[4] * sc, 'FD');
-  });
-  doc.setFontSize(6); doc.setTextColor(90, 105, 110);
-  if (k === 'top') { doc.text('AVANT', ox + vw.w * sc / 2, oy + 5 * sc, { align: 'center' }); doc.text('ARRIERE', ox + vw.w * sc / 2, oy + (vw.h - 2) * sc, { align: 'center' }) }
-  else doc.text('AVANT', ox + (k === 'left' ? 4 : vw.w - 4) * sc, oy + 158 * sc, { align: k === 'left' ? 'left' : 'right' });
-  marks.forEach(function (m, i) {
-    if (m.v !== k) return;
-    var col = (DMG.filter(function (d) { return d[0] === m.t })[0] || DMG[5])[2];
-    var rgb = [parseInt(col.slice(1, 3), 16), parseInt(col.slice(3, 5), 16), parseInt(col.slice(5, 7), 16)];
-    doc.setFillColor(rgb[0], rgb[1], rgb[2]); doc.setDrawColor(255, 255, 255); doc.setLineWidth(.3);
-    var cx = ox + m.x / 100 * vw.w * sc, cy = oy + m.y / 100 * vw.h * sc; doc.circle(cx, cy, 2.4, 'FD');
-    doc.setTextColor(255, 255, 255); doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.text(String(i + 1), cx, cy + 1, { align: 'center' }); doc.setFont('helvetica', 'normal');
-  });
-}
 /* mode : 'entree', 'full' ou 'compl' (cid = identifiant du complément). */
 export async function buildPdf(v, photos, mode, cid) {
   mode = mode || 'full';
   var J = window.jspdf.jsPDF, doc = new J({ unit: 'mm', format: 'a4' }), W = 210, M = 14, y = 0, curTitle = '';
-  var ink = [22, 37, 42], mut = [90, 105, 110], acc = [14, 90, 107], bad = [179, 38, 30];
+  var ink = [22, 37, 42], mut = [90, 105, 110], acc = [14, 90, 107];
   function txt(t, x, yy, o) {
     o = o || {}; doc.setFont('helvetica', o.b ? 'bold' : 'normal'); doc.setFontSize(o.s || 10); var c = o.c || ink; doc.setTextColor(c[0], c[1], c[2]);
     var lines = o.w ? doc.splitTextToSize(L(t), o.w) : [L(t)]; doc.text(lines, x, yy, o.a ? { align: o.a } : undefined); return lines.length * ((o.s || 10) * 0.42)
@@ -87,24 +68,6 @@ export async function buildPdf(v, photos, mode, cid) {
   para('Ce qui doit être fait', v.ops); para('Ce qui a été dit au client', v.dit);
   if (v.dateLimite) { ens(16); h2('Engagement client'); y += txt('Date maximum promise : ' + limTxt(v) + '.   Engagement validé par : ' + (v.engageValide || 'non renseigné'), M, y, { s: 10, b: 1, w: W - 2 * M }) + 5 }
   para('À ne pas faire', v.exclu); para('Objets laissés à bord', v.objets);
-
-  doc.addPage(); band('DOMMAGES ET CONTRÔLE', fmtPlate(v.plaque));
-  var marks = v.marks || [];
-  pdfCar(doc, 'top', M, y, 0.2, marks); pdfCar(doc, 'left', M + 48, y, 0.2, marks); pdfCar(doc, 'right', M + 48, y + 44, 0.2, marks);
-  y += 0.2 * 400 + 4;
-  txt('Vue de dessus · côté gauche (haut) · côté droit (bas)', M, y, { s: 7, c: mut }); y += 6;
-  h2('Dommages relevés');
-  if (!marks.length) { txt('Aucun dommage marqué sur le schéma.', M, y, { s: 10 }); y += 7 }
-  marks.forEach(function (m, i) { ens(7); var d = DMG.filter(function (x) { return x[0] === m.t })[0] || DMG[5]; txt((i + 1) + '.  ' + d[1] + (m.n ? ' : ' + m.n : '') + '  (' + VIEWS[m.v].lab.toLowerCase() + ')', M, y, { s: 10, w: W - 2 * M }); y += 6 });
-  y += 3; h2('Contrôle point par point');
-  CHECK.forEach(function (c) {
-    var s = (v.chk && v.chk[c.k]) || {}; ens(7);
-    txt(c.l, M, y, { s: 9.5, w: 110 });
-    var lab = s.s === 'ras' ? 'RAS' : s.s === 'def' ? 'DEFAUT' : s.s === 'na' ? 'N/A' : 'non relevé';
-    txt(lab, M + 115, y, { s: 9.5, b: 1, c: s.s === 'def' ? bad : ink });
-    if (s.s === 'def' && s.n) { txt(s.n, M + 135, y, { s: 9, w: W - M - 135 - M, c: bad }) }
-    y += 6.2
-  });
 
   var sigs = function (lab, s, x) {
     txt(lab.toUpperCase(), x, y, { s: 7, c: mut });

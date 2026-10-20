@@ -2,7 +2,7 @@ import { act } from './actions.js';
 import { renderMain } from './board.js';
 import { getCd } from './compl.js';
 import { initCopie } from './copie.js';
-import { $, S, T, VV, api, flush, fmtDT, cleanField, formatPlate, isLocked, pend, sanitize, save, sortieDefaut, todayISO, toast } from './core.js';
+import { $, S, T, VV, api, flush, fmtDT, cleanField, formatPlate, pend, sanitize, sortieDefaut, todayISO, toast } from './core.js';
 import { PLAQUE } from './constants.js';
 import { autoCreate } from './dossier.js';
 import { verifierMiseAJour } from './maj.js';
@@ -55,17 +55,7 @@ document.addEventListener('input', function (e) {
     else if (S.cur) setTimeout(refreshChrome, 0);
     return;
   }
-  if (t.dataset && t.dataset.mk != null) { var v2 = VV(), m = (v2.marks || []).map(function (x) { return Object.assign({}, x) }); var i = +t.dataset.mk; if (m[i]) { m[i][t.dataset.mf] = t.value; v2.marks = m; pend.marks = m; clearTimeout(T.tmr); T.tmr = setTimeout(flush, 500); if (t.tagName === 'SELECT') renderSheet(true) } return }
   if (t.dataset && t.dataset.mesk) { t.value = sanitize(t.value, { digits: true, max: 4 }); var v4 = VV(); v4.mes = Object.assign({}, v4.mes || {}); v4.mes[t.dataset.mesk] = t.value; pend.mes = Object.assign({}, pend.mes || {}); pend.mes[t.dataset.mesk] = t.value; clearTimeout(T.tmr); T.tmr = setTimeout(flush, 500); return }
-  if (t.dataset && t.dataset.ck) { var v3 = VV(); v3.chk = Object.assign({}, v3.chk || {}); var c = Object.assign({}, v3.chk[t.dataset.ck] || { s: 'def' }); c.n = t.value; v3.chk[t.dataset.ck] = c; pend.chk = Object.assign({}, pend.chk || {}); pend.chk[t.dataset.ck] = c; clearTimeout(T.tmr); T.tmr = setTimeout(flush, 500); return }
-});
-document.addEventListener('click', function (e) {
-  var s = e.target.closest && e.target.closest('svg[data-view]'); if (!s) return;
-  var v = VV(); if (!v) return;
-  if (isLocked(v, 'entry')) { toast('Dossier verrouillé : utiliser Compléments, ou le code PIN pour corriger'); return }
-  var r = s.getBoundingClientRect(), x = Math.round((e.clientX - r.left) / r.width * 1000) / 10, y = Math.round((e.clientY - r.top) / r.height * 1000) / 10;
-  var m = (v.marks || []).concat([{ v: s.dataset.view, x: x, y: y, t: S.dmg, n: '' }]);
-  v.marks = m; if (S.cur) save({ marks: m }); renderSheet(true);
 });
 
 /* ---------- démarrage ---------- */

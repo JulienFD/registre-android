@@ -63,7 +63,7 @@ export function validateEntry() {
 export function lockConfirm(f) {
   var undo = f ? '<p class="hint"><b>Si vous annulez, la signature ' + esc(SIGLAB[f] || '') + ' que vous venez de poser sera retirée</b> et devra être refaite avant de pouvoir verrouiller.</p>' : '';
   modalShow('<h2>Verrouiller la fiche ?</h2>' +
-    '<p>Les informations, les photos, le contrôle et les signatures sont complets. En validant, l’entrée est <b>verrouillée</b> : toute correction demandera le code PIN propriétaire et sera inscrite dans l’historique. Le PDF d’entrée est ensuite créé.</p>' + undo +
+    '<p>Les informations, les photos et les signatures sont complets. En validant, l’entrée est <b>verrouillée</b> : toute correction demandera le code PIN propriétaire et sera inscrite dans l’historique. Le PDF d’entrée est ensuite créé.</p>' + undo +
     '<div class="mrow2"><button class="btn" data-act="lockcancel"' + (f ? ' data-f="' + esc(f) + '"' : '') + '>' + (f ? 'Annuler et retirer la signature' : 'Annuler') + '</button><button class="btn pri" data-act="lockok">Verrouiller la fiche</button></div>');
 }
 export function undoSig(f) {
